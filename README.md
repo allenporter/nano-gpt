@@ -6,6 +6,7 @@ work environment.
 
 Some specific goals for this project:
 
+- Pull out colab code into reusable libraries
 - Allow working on hardware I have available (mps, old GPUs, colab, etc)
 - Basic python tests/type checking
 - Allow experimenting on other python frameworks other than pytorch
