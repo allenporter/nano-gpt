@@ -13,11 +13,14 @@ Some specific goals for this project:
 - Make routines for working on hardware I have available (mps, old GPUs, colab, etc)
 - Additional type checking for safety/documentation
 - Basic unit tests to ensure things continue working
+- Add a little more abstraction, as a style preference, to facilitate typing and testing
 - Allow experimenting on other python frameworks other than pytorch
 
 This project is managed with [scruft](https://github.com/allenporter/scruft)
 
 ## Environment
+
+Install pre-requisites
 
 ```bash
 $ uv venv --python3.13
