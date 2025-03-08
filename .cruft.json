@@ -1,0 +1,17 @@
+{
+  "template": "http://github.com/allenporter/cookiecutter-python",
+  "commit": "660f86f4628b518c5e276bd0edddcc1a2f83828f",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "full_name": "Allen Porter",
+      "email": "allen.porter@gmail.com",
+      "github_username": "allenporter",
+      "project_name": "nano_gpt",
+      "description": "A GPT-2 reproduction following karpathy's nanoGPT youtube videos",
+      "version": "0.0.1",
+      "_template": "http://github.com/allenporter/cookiecutter-python"
+    }
+  },
+  "directory": null
+}
