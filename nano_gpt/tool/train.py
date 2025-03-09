@@ -112,7 +112,7 @@ def run(args: argparse.Namespace) -> int:
 
     data_loader = get_data_loader(
         enc=tokenizer,
-        train_config=config.train_config,
+        config=config.train_config.dataset_config,
         device=args.device,
     )
     train(

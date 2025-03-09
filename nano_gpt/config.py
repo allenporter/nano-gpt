@@ -38,6 +38,22 @@ class GPTConfig:
 
 
 @dataclass(frozen=True, kw_only=True)
+class DatasetConfig:
+    """This class defines the configuration for chunking the dataset."""
+
+    micro_batch_size: int
+    """Batch size (micro batch) (B) used for each forward/backward pass."""
+
+    sequence_length: int
+    """Sequence length (T) used for input content. Same as block_size."""
+
+    @property
+    def chunk_token_size(self) -> int:
+        """Number of tokens in each micro batch."""
+        return self.micro_batch_size * self.sequence_length
+
+
+@dataclass(frozen=True, kw_only=True)
 class TrainConfig:
     """Implementats the GPT-3 learning rate."""
 
@@ -68,11 +84,19 @@ class TrainConfig:
 
     def __post_init__(self) -> None:
         """Post init."""
-        if self.total_batch_size % self.chunk_token_size != 0:
+        if self.total_batch_size % self.dataset_config.chunk_token_size != 0:
             raise ValueError(
                 "Total batch size must be divisible by B * T"
-                f" but got {self.total_batch_size} % {self.chunk_token_size}"
+                f" but got {self.total_batch_size} % {self.dataset_config.chunk_token_size}"
             )
+
+    @property
+    def dataset_config(self) -> DatasetConfig:
+        """Dataset configuration."""
+        return DatasetConfig(
+            micro_batch_size=self.micro_batch_size,
+            sequence_length=self.sequence_length,
+        )
 
     @property
     def min_lr(self) -> float:
@@ -82,13 +106,7 @@ class TrainConfig:
     @property
     def grad_accum_steps(self) -> int:
         """Number of gradient accumulation steps."""
-        return self.total_batch_size // self.chunk_token_size
-
-    @property
-    def chunk_token_size(self) -> int:
-        """Number of tokens in each micro batch."""
-        return self.micro_batch_size * self.sequence_length
-
+        return self.total_batch_size // self.dataset_config.chunk_token_size
 
     def log_info(self) -> None:
         """String representation."""
