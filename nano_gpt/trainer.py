@@ -126,7 +126,7 @@ def train(
 
         loss: torch.Tensor = torch.tensor(0.0)
         for micro_step in range(config.grad_accum_steps):
-            print(f"micro_step: {micro_step}")
+            _LOGGER.debug("micro_step: %s", micro_step)
             x, y = next(ds)
             x, y = x.to(device), y.to(device)
             with torch.autocast(device_type=device, dtype=dtype):
