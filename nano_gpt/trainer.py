@@ -43,15 +43,15 @@ class TrainStats:
         """Start the step."""
         self.t0 = time.time()
 
-    def end_step(self, loss: torch.Tensor, norm: float) -> None:
+    def end_step(self, loss: float, norm: float) -> None:
         """Step the statistics."""
         t1 = time.time()
         dt = (t1 - self.t0) * 1000
-        tok_per_sec = self.config.chunk_token_size / (t1 - self.t0)
+        tok_per_sec = self.config.total_batch_size / (t1 - self.t0)
         self.stats.update(
             {
                 "step": self.step,
-                "loss": f"{loss.item():0.4f}",
+                "loss": f"{loss:0.4f}",
                 "norm": f"{norm:0.4f}",
                 "dt": f"{dt:0.2f}ms",
                 "tok/sec": f"{tok_per_sec:0.2f}",
@@ -86,7 +86,7 @@ def train(
         stats.start_step()
         optimizer.zero_grad()
 
-        loss: torch.Tensor = torch.tensor(0.0)
+        loss_accum = 0.0
         for micro_step in range(config.grad_accum_steps):
             _LOGGER.debug("micro_step: %s", micro_step)
             x, y = next(ds)
@@ -94,6 +94,7 @@ def train(
             with torch.autocast(device_type=device, dtype=dtype):
                 logits, loss = model(x, y)
             loss = loss / config.grad_accum_steps
+            loss_accum += loss.detach().item()
             loss.backward()  # type: ignore[no-untyped-call]
 
         # Prevent the model from getting large shocks of gradient magnitude
@@ -108,5 +109,5 @@ def train(
         if "cuda" in device:
             torch.cuda.synchronize()
 
-        stats.end_step(loss, norm)
+        stats.end_step(loss_accum, norm)
         print(stats)

@@ -86,8 +86,9 @@ class TrainConfig:
 
     @property
     def chunk_token_size(self) -> int:
-        """Chunk token size."""
+        """Number of tokens in each micro batch."""
         return self.micro_batch_size * self.sequence_length
+
 
     def log_info(self) -> None:
         """String representation."""

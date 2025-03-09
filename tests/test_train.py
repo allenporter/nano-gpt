@@ -24,7 +24,7 @@ def test_train_stats() -> None:
 
     t1 = t0 + 0.100
     with patch("nano_gpt.trainer.time.time", return_value=t1):
-        stats.end_step(loss=torch.tensor(1.0), norm=1.0)
+        stats.end_step(loss=1.0, norm=1.0)
 
     assert stats.step == 1
     assert (
