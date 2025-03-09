@@ -4,7 +4,6 @@ This is a thin wrapper around the HuggingFace transformers library and uses
 the approach from the GPT-2/GPT-3 papers.
 """
 
-from dataclasses import dataclass
 from typing import Any, cast
 import inspect
 import logging
@@ -15,47 +14,9 @@ from torch.nn import functional as F
 from transformers import GPT2LMHeadModel
 
 from .tokenizer import Tokenizer
+from .config import GPTConfig, config_from_pretrained
 
 _LOGGER = logging.getLogger(__name__)
-
-
-@dataclass
-class GPTConfig:
-    """This class defines the configuration for the GPT model."""
-
-    block_size: int = 1024
-    vocab_size: int = 50257
-
-    n_layer: int = 12
-    n_head: int = 12
-    n_embd: int = 768
-
-
-PRETRAINED_MODELS = {"gpt2", "gpt2-medium", "gpt2-large", "gpt2-xl"}
-PRETRAINED_MODEL_CONFIG = {
-    "gpt2": dict(n_layer=12, n_head=12, n_embd=768),  # 124M params
-    "gpt2-medium": dict(n_layer=24, n_head=16, n_embd=1024),  # 350M params
-    "gpt2-large": dict(n_layer=36, n_head=20, n_embd=1280),  # 774M params
-    "gpt2-xl": dict(n_layer=48, n_head=25, n_embd=1600),  # 1558M params
-}
-
-
-def config_from_pretrained(model_type: str) -> GPTConfig:
-    """Return the configuration for the pretrained model."""
-    if model_type not in PRETRAINED_MODELS:
-        raise ValueError(f"Unknown model type: {model_type}")
-    # n_layer, n_head and n_embd are determined from model_type
-    config_args = {
-        "gpt2": dict(n_layer=12, n_head=12, n_embd=768),  # 124M params
-        "gpt2-medium": dict(n_layer=24, n_head=16, n_embd=1024),  # 350M params
-        "gpt2-large": dict(n_layer=36, n_head=20, n_embd=1280),  # 774M params
-        "gpt2-xl": dict(n_layer=48, n_head=25, n_embd=1600),  # 1558M params
-    }[model_type]
-    return GPTConfig(
-        **config_args,
-        vocab_size=50257,  # always 50257 for GPT model checkpoints
-        block_size=1024,  # always 1024 for GPT model checkpoints
-    )
 
 
 class CausalSelfAttention(nn.Module):
@@ -248,8 +209,8 @@ class GPT(nn.Module):
     def from_pretrained(cls, model_type: str, tokenizer: Tokenizer) -> "GPT":
         """Load the GPT from the pretrained model."""
         _LOGGER.info("loading weights from pretrained gpt: %s" % model_type)
-        config = config_from_pretrained(model_type)
-        model = GPT(config, tokenizer=tokenizer)
+        model_config = config_from_pretrained(model_type)
+        model = GPT(model_config, tokenizer=tokenizer)
         sd = model.state_dict()
         sd_keys = [
             k for k in sd.keys() if not k.endswith(".attn.bias")

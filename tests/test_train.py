@@ -4,7 +4,8 @@ from unittest.mock import patch
 
 import torch
 
-from nano_gpt.trainer import TrainStats, TrainConfig
+from nano_gpt.trainer import TrainStats
+from nano_gpt.config import TrainConfig
 
 
 def test_train_stats() -> None:

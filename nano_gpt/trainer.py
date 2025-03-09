@@ -10,57 +10,22 @@ from collections.abc import Iterator
 import torch
 
 from .model import GPT
+from .config import TrainConfig
 
 _LOGGER = logging.getLogger(__name__)
 
-# GPT-2 for smaller model uses 2**19, ~0.5M, in number of tokens
-BATCH_SIZE = 524288
 
-
-@dataclass
-class TrainConfig:
-    """Implementats the GPT-3 learning rate."""
-
-    B: int = 16
-    """Batch size (micro batch) used for each forward/backward pass."""
-
-    T: int = 1024
-    """Sequence length."""
-
-    total_batch_size: int = BATCH_SIZE
-    """Total batch size in number of tokens for each gradient update."""
-
-    max_lr: float = 6e-4
-    """Maximum learning rate."""
-
-    min_lr_ratio: float = 0.1
-    """Minimum learning rate ratio in terms of the max learning rate."""
-
-    warmup_steps: int = 10
-    """Number of warmup steps before getting to the max learning rate."""
-
-    max_steps: int = 50
-    """Total number of training steps to perform."""
-
-    def __post_init__(self) -> None:
-        """Post init."""
-        self.min_lr = self.max_lr * self.min_lr_ratio
-        if self.total_batch_size % (self.B * self.T) != 0:
-            raise ValueError(
-                "Total batch size must be divisible by B * T"
-                f" but got {self.total_batch_size} % {self.B * self.T}"
-            )
-        self.grad_accum_steps = self.total_batch_size // (self.B * self.T)
-
-    def get_lr(self, step: int) -> float:
-        """Learning rate."""
-        if step < self.warmup_steps:
-            return self.max_lr * (step + 1) / self.warmup_steps
-        if step > self.max_steps:
-            return self.min_lr
-        decay_ratio = (step - self.warmup_steps) / (self.max_steps - self.warmup_steps)
-        coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio))
-        return self.min_lr + coeff * (self.max_lr - self.min_lr)
+def get_lr(config: TrainConfig, step: int) -> float:
+    """Learning rate."""
+    if step < config.warmup_steps:
+        return config.max_lr * (step + 1) / config.warmup_steps
+    if step > config.max_steps:
+        return config.min_lr
+    decay_ratio = (step - config.warmup_steps) / (
+        config.max_steps - config.warmup_steps
+    )
+    coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio))
+    return config.min_lr + coeff * (config.max_lr - config.min_lr)
 
 
 @dataclass
@@ -113,7 +78,7 @@ def train(
     _LOGGER.info("Gradient accumulation steps: %s", config.grad_accum_steps)
 
     optimizer = model.configure_optimizers(
-        weight_decay=0.1, learning_rate=config.get_lr(0), device=device
+        weight_decay=0.1, learning_rate=get_lr(config, 0), device=device
     )
 
     ds = iter(data_loader)
@@ -138,7 +103,7 @@ def train(
         norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
         # Update the learning rate based on the step
-        lr = config.get_lr(step)
+        lr = get_lr(config, step)
         for param_group in optimizer.param_groups:
             param_group["lr"] = lr
 

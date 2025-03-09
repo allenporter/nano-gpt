@@ -24,11 +24,13 @@ from typing import cast
 
 import torch
 
+from nano_gpt.config import NICE_VOCAB_SIZE, TrainConfig, config_from
 from nano_gpt.model import GPT, GPTConfig
-from nano_gpt.tokenizer import get_tokenizer
 from nano_gpt.devices import get_device, get_dtype
 from nano_gpt.data import get_data_loader
-from nano_gpt import trainer
+from nano_gpt.tokenizer import get_tokenizer
+from nano_gpt.trainer import train
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,6 +42,11 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         type=str,
         default=get_device(),
         help="The device to use for sampling.",
+    )
+    args.add_argument(
+        "--model",
+        type=str,
+        help="Use the specified model name configuration default values.",
     )
     args.add_argument(
         "--batch_size",
@@ -61,21 +68,27 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
     )
 
 
-# Increased from GPT-2 vocab size for training using a nice power of 2
-VOCAB_SIZE = 50304
-
-
 def run(args: argparse.Namespace) -> int:
     """Run the sample command."""
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
     torch.set_float32_matmul_precision("high")
 
-    model_config = GPTConfig(
-        vocab_size=VOCAB_SIZE,
-    )
+    if args.model is not None:
+        config = config_from(args.model)
+        model_config = config.model_config
+        train_config = config.train_config
+    else:
+        model_config = GPTConfig(vocab_size=NICE_VOCAB_SIZE)
+        train_config = TrainConfig()
+    if args.batch_size != 16:
+        train_config.B = args.batch_size
+    if args.sequence_length != 1024:
+        train_config.T = args.sequence_length
+        model_config.block_size = args.sequence_length
+    
     tokenizer = get_tokenizer()
-    model = GPT(model_config, tokenizer=tokenizer)
+    model = GPT(config.model_config, tokenizer=tokenizer)
     _LOGGER.info("Using device %s", args.device)
     model = model.to(args.device)
     if args.device == "cuda":
@@ -84,18 +97,13 @@ def run(args: argparse.Namespace) -> int:
     else:
         _LOGGER.debug("Model will not be compiled")
 
-    train_config = trainer.TrainConfig(
-        B=args.batch_size,
-        T=args.sequence_length,
-    )
+
     data_loader = get_data_loader(
         enc=tokenizer,
         batch_size=train_config.B,
         token_len=train_config.T,
         device=args.device,
     )
-    trainer.train(
-        model, args.device, data_loader, train_config, dtype=get_dtype(args.device)
-    )
+    train(model, args.device, data_loader, train_config, dtype=get_dtype(args.device))
 
     return 0
