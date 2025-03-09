@@ -73,9 +73,9 @@ def train(
 ) -> None:
     """Train the model."""
     config.log_info()
-
+    is_cuda = "cuda" in device
     optimizer = model.configure_optimizers(
-        weight_decay=0.1, learning_rate=get_lr(config, 0), device=device
+        weight_decay=0.1, learning_rate=get_lr(config, 0), use_fused=is_cuda,
     )
 
     ds = iter(data_loader)
@@ -106,7 +106,7 @@ def train(
             param_group["lr"] = lr
 
         optimizer.step()
-        if "cuda" in device:
+        if is_cuda:
             torch.cuda.synchronize()
 
         stats.end_step(loss_accum, norm)

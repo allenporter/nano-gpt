@@ -137,7 +137,7 @@ class GPT(nn.Module):
             torch.nn.init.normal_(module.weight, mean=0, std=std)
 
     def configure_optimizers(
-        self, weight_decay: float, learning_rate: float, device: Any
+        self, weight_decay: float, learning_rate: float, use_fused: bool,
     ) -> torch.optim.AdamW:
         """Return the optimizer."""
         # start with all params that require grad
@@ -162,8 +162,6 @@ class GPT(nn.Module):
             len(nodecay_params),
             num_nodecay_params,
         )
-        fused_available = "fused" in inspect.signature(torch.optim.AdamW).parameters
-        use_fused = fused_available and "cuda" in device
         _LOGGER.info("Using fused adamw : %s", use_fused)
         return torch.optim.AdamW(
             params=optim_groups, lr=3e-4, betas=(0.9, 0.95), eps=1e-8, fused=use_fused

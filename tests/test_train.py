@@ -11,8 +11,8 @@ from nano_gpt.config import config_from
 def test_train_stats() -> None:
     """Test the TrainStats class."""
 
-    config = config_from("gpt2", micro_batch_size=16, sequence_length=256).train_config
-    assert config.chunk_token_size == 4096  # Used in tok/sec below
+    config = config_from("gpt2", micro_batch_size=4, sequence_length=256).train_config
+    assert config.chunk_token_size == 1024  # Used in tok/sec below
 
     stats = TrainStats(config)
     assert stats.step == 0
@@ -29,5 +29,5 @@ def test_train_stats() -> None:
     assert stats.step == 1
     assert (
         str(stats)
-        == "step: 0 | loss: 1.0000 | norm: 1.0000 | dt: 100.00ms | tok/sec: 40960.04"
+        == "step: 0 | loss: 1.0000 | norm: 1.0000 | dt: 100.00ms | tok/sec: 5242885.00"
     )
