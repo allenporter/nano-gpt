@@ -5,7 +5,7 @@ This is a thin wrapper around the HuggingFace datasets library.
 
 from typing import Any, Self
 import logging
-from collections.abc import Iterator
+from collections.abc import Iterator, Iterable
 
 import datasets
 import torch
@@ -31,7 +31,7 @@ def _load_dataset() -> Any:
     return ds["train"]["text"][0]
 
 
-class DataLoader:
+class DataLoader(Iterable[tuple[torch.Tensor, torch.Tensor]]):
     """Data loader to load batches from the dataset."""
 
     def __init__(self, enc: Tokenizer, config: DatasetConfig, device: Any) -> None:
