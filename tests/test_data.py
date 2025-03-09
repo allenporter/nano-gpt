@@ -42,7 +42,10 @@ def test_reached_epoch(fake_tokenizer: Tokenizer) -> None:
     batches = [next(ds) for _ in range(6)]
     # flatten the list of batches (micro_batch_size=1)
     pairs = [(x[0], y[0]) for x, y in batches]
-    assert [(fake_tokenizer.decode(x), fake_tokenizer.decode(y)) for x, y in pairs] == [
+    assert [
+        (fake_tokenizer.decode(x.tolist()), fake_tokenizer.decode(y.tolist()))
+        for x, y in pairs
+    ] == [
         ("this", "his "),
         (" is ", "is t"),
         ("test", "est "),
