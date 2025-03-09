@@ -9,7 +9,7 @@ def test_get_data_loader(fake_tokenizer: Tokenizer) -> None:
     """Test that we can get the data loader."""
 
     config = DatasetConfig(micro_batch_size=2, sequence_length=4)
-    data_loader = get_data_loader(fake_tokenizer, config, device="cpu")
+    data_loader = get_data_loader(fake_tokenizer, config)
 
     assert data_loader is not None
     assert hasattr(data_loader, "__iter__")
@@ -36,7 +36,7 @@ def test_reached_epoch(fake_tokenizer: Tokenizer) -> None:
     """Test that we can get the data loader."""
 
     config = DatasetConfig(micro_batch_size=1, sequence_length=4)
-    data_loader = get_data_loader(fake_tokenizer, config, device="cpu")
+    data_loader = get_data_loader(fake_tokenizer, config)
 
     ds = iter(data_loader)
     batches = [next(ds) for _ in range(6)]

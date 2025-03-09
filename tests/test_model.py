@@ -26,7 +26,6 @@ def test_block_size(fake_tokenizer: Tokenizer) -> None:
     data_loader = get_data_loader(
         fake_tokenizer,
         train_config.dataset_config,
-        device="cpu",
     )
     ds = iter(data_loader)
     x, y = next(ds)

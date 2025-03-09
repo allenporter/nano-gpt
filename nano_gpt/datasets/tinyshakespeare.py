@@ -1,4 +1,4 @@
-"""Data loader library.
+"""Data loader library for the tinyshakespeare dataset.
 
 This is a thin wrapper around the HuggingFace datasets library.
 """
@@ -19,10 +19,9 @@ _LOGGER = logging.getLogger(__name__)
 def get_data_loader(
     enc: Tokenizer,
     config: DatasetConfig,
-    device: Any,
 ) -> Iterator[tuple[torch.Tensor, torch.Tensor]]:
     """Get the data loader."""
-    return DataLoader(enc, config, device)
+    return DataLoader(enc, config)
 
 
 def _load_dataset() -> Any:
@@ -34,7 +33,7 @@ def _load_dataset() -> Any:
 class DataLoader(Iterable[tuple[torch.Tensor, torch.Tensor]]):
     """Data loader to load batches from the dataset."""
 
-    def __init__(self, enc: Tokenizer, config: DatasetConfig, device: Any) -> None:
+    def __init__(self, enc: Tokenizer, config: DatasetConfig) -> None:
         """Initialize Dataloader."""
         self.B = config.micro_batch_size
         self.T = config.sequence_length
