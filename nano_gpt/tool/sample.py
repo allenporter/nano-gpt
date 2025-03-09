@@ -25,11 +25,15 @@ options:
 """
 
 import argparse
+import logging
 
 import torch
 
 from nano_gpt.model import GPT
 from nano_gpt.tokenizer import get_tokenizer
+from nano_gpt.devices import get_device
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def create_arguments(args: argparse.ArgumentParser) -> None:
@@ -42,7 +46,7 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
     args.add_argument(
         "--device",
         type=str,
-        default="cpu",
+        default=get_device(),
         help="The device to use for sampling.",
     )
     args.add_argument(
@@ -77,6 +81,7 @@ def run(args: argparse.Namespace) -> int:
     model = GPT.from_pretrained(args.pretrained, get_tokenizer())
     model.eval()
     model = model.to(args.device)
+    _LOGGER.info("Using device %s", args.device)
 
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)

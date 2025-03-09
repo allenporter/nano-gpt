@@ -6,7 +6,7 @@ import logging
 import sys
 from pathlib import Path
 
-from . import sample
+from . import sample, train
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -24,7 +24,9 @@ def get_base_arg_parser() -> argparse.ArgumentParser:
     sample.create_arguments(
         subparsers.add_parser("sample", description="Sample from a model")
     )
-
+    train.create_arguments(
+        subparsers.add_parser("train", description="Sample from a model")
+    )
     return parser
 
 

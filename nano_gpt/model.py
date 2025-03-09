@@ -183,23 +183,29 @@ class GPT(nn.Module):
         param_dict = {pn: p for pn, p in self.named_parameters()}
         param_dict = {pn: p for pn, p in param_dict.items() if p.requires_grad}
         # create optim optim_groups
-        decay_params = {p for p in param_dict.values() if p.dim() >= 2}
-        nodecay_params = {p for p in param_dict.values() if p.dim() < 2}
+        decay_params = [p for p in param_dict.values() if p.dim() >= 2]
+        nodecay_params = [p for p in param_dict.values() if p.dim() < 2]
         optim_groups = [
             {"params": decay_params, "weight_decay": weight_decay},
             {"params": nodecay_params, "weight_decay": 0},
         ]
         num_decay_params = sum(p.numel() for p in decay_params)
         num_nodecay_params = sum(p.numel() for p in nodecay_params)
-        _LOGGER.info("num decay_params %s / %s", len(decay_params), num_decay_params)
         _LOGGER.info(
-            "num nodecay_params %s / %s", len(nodecay_params), num_nodecay_params
+            "num decay_params %s (tensors) / %s (parameters)",
+            len(decay_params),
+            num_decay_params,
+        )
+        _LOGGER.info(
+            "num nodecay_params %s (tensors) / %s (parameters)",
+            len(nodecay_params),
+            num_nodecay_params,
         )
         fused_available = "fused" in inspect.signature(torch.optim.AdamW).parameters
         use_fused = fused_available and "cuda" in device
         _LOGGER.info("Using fused adamw : %s", use_fused)
         return torch.optim.AdamW(
-            optim_groups, lr=3e-4, betas=(0.9, 0.95), eps=1e-8, fused=use_fused
+            params=optim_groups, lr=3e-4, betas=(0.9, 0.95), eps=1e-8, fused=use_fused
         )
 
     def forward(

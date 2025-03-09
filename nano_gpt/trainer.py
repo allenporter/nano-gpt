@@ -5,13 +5,16 @@ from dataclasses import dataclass
 import math
 import logging
 from typing import Any
+from collections.abc import Iterator
 
 import torch
 
 from .model import GPT
-from .data import DataLoader
 
 _LOGGER = logging.getLogger(__name__)
+
+# GPT-2 for smaller model uses 2**19, ~0.5M, in number of tokens
+BATCH_SIZE = 524288
 
 
 @dataclass
@@ -19,13 +22,13 @@ class TrainConfig:
     """Implementats the GPT-3 learning rate."""
 
     B: int = 16
-    """Batch size."""
+    """Batch size (micro batch) used for each forward/backward pass."""
 
     T: int = 1024
     """Sequence length."""
 
-    total_batch_size: int = 524288
-    """Total batch size."""
+    total_batch_size: int = BATCH_SIZE
+    """Total batch size in number of tokens for each gradient update."""
 
     max_lr: float = 6e-4
     """Maximum learning rate."""
@@ -47,7 +50,7 @@ class TrainConfig:
                 "Total batch size must be divisible by B * T"
                 f" but got {self.total_batch_size} % {self.B * self.T}"
             )
-        self.grad_accum_steps = self.total_batch_size // (self.B**self.T)
+        self.grad_accum_steps = self.total_batch_size // (self.B * self.T)
 
     def get_lr(self, step: int) -> float:
         """Learning rate."""
@@ -61,20 +64,17 @@ class TrainConfig:
 
 
 def train(
-    model: GPT, device: Any, data_loader: DataLoader, config: TrainConfig
+    model: GPT,
+    device: Any,
+    data_loader: Iterator[tuple[torch.Tensor, torch.Tensor]],
+    config: TrainConfig,
+    dtype: Any,
 ) -> None:
     """Train the model."""
-    if data_loader.B != config.B:
-        raise ValueError(
-            f"Batch size of data loader {data_loader.B} does not match config {config.B}"
-        )
-    if data_loader.T != config.T:
-        raise ValueError(
-            f"Sequence length of data loader {data_loader.T} does not match config {config.T}"
-        )
-
-    _LOGGER.debug("total_batch_size: %s", config.total_batch_size)
-    _LOGGER.debug("grad_accum_steps: %s", config.grad_accum_steps)
+    _LOGGER.info("Token batch size: %s", config.B)
+    _LOGGER.info("Sequence length: %s", config.T)
+    _LOGGER.info("Total token batch size: %s", config.total_batch_size)
+    _LOGGER.info("Gradient accumulation steps: %s", config.grad_accum_steps)
 
     optimizer = model.configure_optimizers(
         weight_decay=0.1, learning_rate=config.get_lr(0), device=device
@@ -86,30 +86,34 @@ def train(
         t0 = time.time()
         optimizer.zero_grad()
 
-        for micro_step in config.grad_accum_steps:
+        loss: torch.Tensor = torch.tensor(0.0)
+        for micro_step in range(config.grad_accum_steps):
+            print(f"micro_step: {micro_step}")
             x, y = next(ds)
             x, y = x.to(device), y.to(device)
-            with torch.autocast(device_type=device.type, dtype=torch.bfloat16):
+            with torch.autocast(device_type=device, dtype=dtype):
                 logits, loss = model(x, y)
             loss = loss / config.grad_accum_steps
-            loss.backward()
+            loss.backward()  # type: ignore[no-untyped-call]
 
         # Prevent the model from getting large shocks of gradient magnitude
         norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
         # Update the learning rate based on the step
         lr = config.get_lr(step)
-        for param_group in optimizer.param_group:  # type: ignore[attr-defined]
+        for param_group in optimizer.param_groups:
             param_group["lr"] = lr
 
         optimizer.step()
-        torch.cuda.synchronize()
+        if "cuda" in device:
+            torch.cuda.synchronize()
+
         t1 = time.time()
         dt = (t1 - t0) * 1000
-        tokens_per_sec = data_loader.chunk_size / (t1 - t0)
+        tokens_per_sec = (config.B * config.T) / (t1 - t0)
 
         print(
-            "|".join(
+            "| ".join(
                 [
                     f"step {step}",
                     f"loss {loss.item():0.6f}",

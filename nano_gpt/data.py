@@ -4,12 +4,15 @@ This is a thin wrapper around the HuggingFace datasets library.
 """
 
 from typing import Any, Self
+import logging
 from collections.abc import Iterator
 
 import datasets
 import torch
 
 from .tokenizer import Tokenizer
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def get_data_loader(
@@ -59,6 +62,6 @@ class DataLoader:
         y = buf[1:].view(B, T)
         self.pos += self.chunk_size
         if (self.pos + self.chunk_size + 1) > len(self.tokens):
-            print("Reached epoch")
+            _LOGGER.info("Reached epoch")
             self.pos = 0
         return x, y
