@@ -2,7 +2,7 @@
 
 from nano_gpt.model import GPT
 from nano_gpt.config import GPTConfig, config_from
-from nano_gpt.data import get_data_loader
+from nano_gpt.datasets.tinyshakespeare import get_data_loader
 from nano_gpt.tokenizer import Tokenizer
 
 

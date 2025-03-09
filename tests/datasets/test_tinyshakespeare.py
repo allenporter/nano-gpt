@@ -1,6 +1,6 @@
 """Tests for the data loader."""
 
-from nano_gpt.data import get_data_loader
+from nano_gpt.datasets.tinyshakespeare import get_data_loader
 from nano_gpt.config import DatasetConfig
 from nano_gpt.tokenizer import Tokenizer
 

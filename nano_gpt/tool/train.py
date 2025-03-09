@@ -33,7 +33,7 @@ import torch
 from nano_gpt.config import config_from
 from nano_gpt.model import GPT
 from nano_gpt.devices import get_device, get_dtype
-from nano_gpt.data import get_data_loader
+from nano_gpt.datasets.tinyshakespeare import get_data_loader
 from nano_gpt.tokenizer import get_tokenizer
 from nano_gpt.trainer import train
 

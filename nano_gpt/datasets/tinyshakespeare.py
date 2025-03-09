@@ -10,8 +10,8 @@ from collections.abc import Iterator, Iterable
 import datasets
 import torch
 
-from .tokenizer import Tokenizer
-from .config import DatasetConfig
+from nano_gpt.tokenizer import Tokenizer
+from nano_gpt.config import DatasetConfig
 
 _LOGGER = logging.getLogger(__name__)
 

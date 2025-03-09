@@ -30,6 +30,8 @@ def fake_tokenizer() -> Tokenizer:
 @pytest.fixture(autouse=True)
 def fake_dataset() -> Generator:
     """Fixture to prepare a fake dataset for testing."""
-    with patch("nano_gpt.data.datasets.load_dataset") as mock_load_dataset:
+    with patch(
+        "nano_gpt.datasets.tinyshakespeare.datasets.load_dataset"
+    ) as mock_load_dataset:
         mock_load_dataset.return_value = {"train": {"text": ["this is test data"]}}
         yield
