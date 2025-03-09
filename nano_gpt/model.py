@@ -14,7 +14,7 @@ from torch.nn import functional as F
 from transformers import GPT2LMHeadModel
 
 from .tokenizer import Tokenizer
-from .config import GPTConfig, config_from_pretrained
+from .config import GPTConfig, model_config_from_pretrained
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -209,7 +209,7 @@ class GPT(nn.Module):
     def from_pretrained(cls, model_type: str, tokenizer: Tokenizer) -> "GPT":
         """Load the GPT from the pretrained model."""
         _LOGGER.info("loading weights from pretrained gpt: %s" % model_type)
-        model_config = config_from_pretrained(model_type)
+        model_config = model_config_from_pretrained(model_type)
         model = GPT(model_config, tokenizer=tokenizer)
         sd = model.state_dict()
         sd_keys = [

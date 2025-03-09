@@ -1,7 +1,7 @@
 """Tests for the GPT-2 model architecture."""
 
 from nano_gpt.model import GPT
-from nano_gpt.config import GPTConfig
+from nano_gpt.config import GPTConfig, config_from
 from nano_gpt.data import get_data_loader
 from nano_gpt.tokenizer import Tokenizer
 
@@ -20,15 +20,20 @@ def test_block_size(fake_tokenizer: Tokenizer) -> None:
 
     model = GPT(config, tokenizer=fake_tokenizer)
 
-    batch_size = 2
-    token_len = 3
+    train_config = config_from("gpt2", batch_size=2, sequence_length=4).train_config
     data_loader = get_data_loader(
-        fake_tokenizer, batch_size=batch_size, token_len=token_len, device="cput"
+        fake_tokenizer,
+        train_config,
+        device="cpu",
     )
     ds = iter(data_loader)
     x, y = next(ds)
-    assert x.shape == (batch_size, token_len)
-    assert y.shape == (batch_size, token_len)
+    assert x.shape == (train_config.batch_size, train_config.sequence_length)
+    assert y.shape == (train_config.batch_size, train_config.sequence_length)
     logits, loss = model(x, y)
-    assert logits.shape == (batch_size, token_len, vocab_size)
+    assert logits.shape == (
+        train_config.batch_size,
+        train_config.sequence_length,
+        vocab_size,
+    )
     assert isinstance(loss.item(), float)

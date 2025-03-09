@@ -11,15 +11,18 @@ import datasets
 import torch
 
 from .tokenizer import Tokenizer
+from .config import TrainConfig
 
 _LOGGER = logging.getLogger(__name__)
 
 
 def get_data_loader(
-    enc: Any, batch_size: int, token_len: int, device: Any
+    enc: Tokenizer,
+    train_config: TrainConfig,
+    device: Any,
 ) -> Iterator[tuple[torch.Tensor, torch.Tensor]]:
     """Get the data loader."""
-    return DataLoader(enc, batch_size, token_len, device)
+    return DataLoader(enc, train_config, device)
 
 
 def _load_dataset() -> Any:
@@ -31,13 +34,11 @@ def _load_dataset() -> Any:
 class DataLoader:
     """Data loader to load batches from the dataset."""
 
-    def __init__(
-        self, enc: Tokenizer, batch_size: int, token_len: int, device: Any
-    ) -> None:
+    def __init__(self, enc: Tokenizer, train_config: TrainConfig, device: Any) -> None:
         """Initialize Dataloader."""
-        self.B = batch_size
-        self.T = token_len
-        self.chunk_size = self.B * self.T
+        self.B = train_config.batch_size
+        self.T = train_config.sequence_length
+        self.chunk_size = train_config.chunk_token_size
 
         self.data = _load_dataset()
         self.tokens = torch.tensor(enc.encode(self.data))

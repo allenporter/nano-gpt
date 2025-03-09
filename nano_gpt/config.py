@@ -1,16 +1,29 @@
 """Configuration module."""
 
+import dataclasses
 from dataclasses import dataclass
 import enum
+import logging
 
+
+_LOGGER = logging.getLogger(__name__)
 
 VOCAB_SIZE = 50257  # Fixed size for GPT model checkpoints
+NICE_VOCAB_SIZE = 50304  # Vocab size with nice power of 2, for training
 BLOCK_SIZE = 1024  # Fixed size for GPT model checkpoints
 
+DEFAULT_TRAIN_BATCH_SIZE = (
+    524288  # GPT-2 uses 2**19, ~0.5M, in number of tokens per batch
+)
+DEFAULT_TRAIN_BATCH_SIZE = 16
 
-@dataclass
+
+@dataclass(frozen=True, kw_only=True)
 class GPTConfig:
-    """This class defines the configuration for the GPT model."""
+    """This class defines the configuration for the GPT model.
+
+    This configuration is used for inference.
+    """
 
     block_size: int = BLOCK_SIZE
     """The maximum context length."""
@@ -28,22 +41,22 @@ class GPTConfig:
     """The size of the embedding vector."""
 
 
-BATCH_SIZE = 524288  # GPT-2 uses 2**19, ~0.5M, in number of tokens per batch
-NICE_VOCAB_SIZE = 50304  # Vocab size with nice power of 2
-
-
-@dataclass
+@dataclass(frozen=True, kw_only=True)
 class TrainConfig:
     """Implementats the GPT-3 learning rate."""
 
-    B: int = 16
-    """Batch size (micro batch) used for each forward/backward pass."""
+    tokens_per_batch: int
+    """Total batch size in number of tokens for each gradient update.
 
-    T: int = BLOCK_SIZE
-    """Sequence length used for input content."""
+    If this is larger than B * T, then the batch size is divided into
+    micro-batches of size B * T as part of gradient accumulation.
+    """
 
-    total_batch_size: int = BATCH_SIZE
-    """Total batch size in number of tokens for each gradient update."""
+    batch_size: int = DEFAULT_TRAIN_BATCH_SIZE
+    """Batch size (micro batch) (B) used for each forward/backward pass."""
+
+    sequence_length: int = BLOCK_SIZE
+    """Sequence length (T) used for input content. Same as block_size."""
 
     max_lr: float = 6e-4
     """Maximum learning rate."""
@@ -59,84 +72,112 @@ class TrainConfig:
 
     def __post_init__(self) -> None:
         """Post init."""
-        self.min_lr = self.max_lr * self.min_lr_ratio
-        if self.total_batch_size % (self.B * self.T) != 0:
+        if self.tokens_per_batch % self.chunk_token_size != 0:
             raise ValueError(
                 "Total batch size must be divisible by B * T"
-                f" but got {self.total_batch_size} % {self.B * self.T}"
+                f" but got {self.tokens_per_batch} % {self.chunk_token_size}"
             )
-        self.grad_accum_steps = self.total_batch_size // (self.B * self.T)
+
+    @property
+    def min_lr(self) -> float:
+        """Minimum learning rate."""
+        return self.max_lr * self.min_lr_ratio
+
+    @property
+    def grad_accum_steps(self) -> int:
+        """Number of gradient accumulation steps."""
+        return self.tokens_per_batch // self.chunk_token_size
+
+    @property
+    def chunk_token_size(self) -> int:
+        """Chunk token size."""
+        return self.batch_size * self.sequence_length
+
+    def log_info(self) -> None:
+        """String representation."""
+        _LOGGER.info("Token batch size: %s", self.batch_size)
+        _LOGGER.info("Sequence length: %s", self.sequence_length)
+        _LOGGER.info("Total token batch size: %s", self.tokens_per_batch)
+        _LOGGER.info("Gradient accumulation steps: %s", self.grad_accum_steps)
 
 
-# PRETRAINED_MODELS = {"gpt2", "gpt2-medium", "gpt2-large", "gpt2-xl"}
-# PRETRAINED_MODEL_CONFIG = {
-#     "gpt2": dict(n_layer=12, n_head=12, n_embd=768),  # 124M params
-#     "gpt2-medium": dict(n_layer=24, n_head=16, n_embd=1024),  # 350M params
-#     "gpt2-large": dict(n_layer=36, n_head=20, n_embd=1280),  # 774M params
-#     "gpt2-xl": dict(n_layer=48, n_head=25, n_embd=1600),  # 1558M params
-# }
-
-
-class TrainedModelConfig(enum.Enum):
+@dataclass(frozen=True)
+class TrainedModelConfig:
     """This class defines the configuration for the GPT model."""
 
-    GPT2_SMALL = (
+    model_name: str
+    """The name of the model."""
+
+    model_config: GPTConfig
+    """The configuration for the model."""
+
+    train_config: TrainConfig
+    """The configuration for the training."""
+
+
+class Models(enum.Enum):
+    """This class defines the configuration for the GPT model."""
+
+    GPT2_SMALL = TrainedModelConfig(
         "gpt2",  # 124M params
         GPTConfig(n_layer=12, n_head=12, n_embd=768),
         TrainConfig(
-            total_batch_size=2**19,  # ~0.5M, in number of tokens
+            tokens_per_batch=2**19,  # ~0.5M, in number of tokens
             max_lr=6e-4,
         ),
     )
-    GPT2_MEDIUM = (
+    GPT2_MEDIUM = TrainedModelConfig(
         "gpt2-medium",  # 350M params
         GPTConfig(n_layer=24, n_head=16, n_embd=1024),
         TrainConfig(
-            total_batch_size=2**19,  # ~0.5M, in number of tokens
+            tokens_per_batch=2**19,  # ~0.5M, in number of tokens
             max_lr=3e-4,
         ),
     )
-    GPT2_LARGE = (
+    GPT2_LARGE = TrainedModelConfig(
         "gpt2-large",  # 774M params
         GPTConfig(n_layer=36, n_head=20, n_embd=1280),
         TrainConfig(
-            total_batch_size=2**19,  # ~0.5M, in number of tokens
+            tokens_per_batch=2**19,  # ~0.5M, in number of tokens
             max_lr=2.5e-4,
         ),
     )
-    GPT2_XL = (
+    GPT2_XL = TrainedModelConfig(
         "gpt2-xl",  # 1558M params
         GPTConfig(n_layer=48, n_head=25, n_embd=1600),
         TrainConfig(
-            total_batch_size=2**20,  #  ~1M, in number of tokens
+            tokens_per_batch=2**20,  #  ~1M, in number of tokens
             max_lr=2e-4,
         ),
     )
 
     # These are model sizes that were made up for this project
-    GPT2_XS = (
+    GPT2_XS = TrainedModelConfig(
         "gpt2-xs",  # 58M params
         GPTConfig(n_layer=10, n_head=10, n_embd=512),
         TrainConfig(
-            total_batch_size=2**18,  # ~0.25M, in number of tokens
+            tokens_per_batch=2**18,  # ~0.25M, in number of tokens
             max_lr=3e-4,
         ),
     )
 
-    GPT2_XXS = (
-        "gpt2-xxs",  # 19M params
+    GPT2_XXS = TrainedModelConfig(
+        "gpt2-xxs",  # ~19M params
         GPTConfig(n_layer=8, n_head=8, n_embd=256),
         TrainConfig(
-            total_batch_size=2**18,  # ~0.25M, in number of tokens
+            tokens_per_batch=2**18,  # ~0.25M, in number of tokens
             max_lr=3e-4,
         ),
     )
 
-    def __init__(self, model_name: str, config: GPTConfig, train_config: TrainConfig):
-        """Initialize the configuration."""
-        self.model_name = model_name
-        self.model_config = config
-        self.train_config = train_config
+    GPT2_XXXS = TrainedModelConfig(
+        "gpt2-xxxs",  # ~7M params
+        GPTConfig(n_layer=4, n_head=4, n_embd=128),
+        TrainConfig(
+            tokens_per_batch=2**17,  # ~0.13M, in number of tokens
+            max_lr=3e-4,
+        ),
+    )
 
 
 PRETRAINED = {
@@ -145,18 +186,38 @@ PRETRAINED = {
     "gpt2-large",
     "gpt2-xl",
 }
-MODELS = {model.model_name: model for model in TrainedModelConfig}
+MODELS = {model.value.model_name: model.value for model in Models}
 
 
-
-def config_from(model_type: str) -> TrainedModelConfig:
+def config_from(
+    model_type: str,
+    batch_size: int | None = None,
+    sequence_length: int | None = None,
+) -> TrainedModelConfig:
     """Return the configuration for the model."""
     if (config := MODELS.get(model_type)) is None:
         raise ValueError(f"Unknown model type: {model_type}")
-    return config
+    model_config_updates = {}
+    train_config_updates = {}
+    if batch_size is not None:
+        train_config_updates["batch_size"] = batch_size
+    if sequence_length is not None:
+        train_config_updates["sequence_length"] = sequence_length
+        model_config_updates["block_size"] = sequence_length
+    return TrainedModelConfig(
+        model_name=config.model_name,
+        model_config=dataclasses.replace(
+            config.model_config,
+            **model_config_updates,
+        ),
+        train_config=dataclasses.replace(
+            config.train_config,
+            **train_config_updates,
+        ),
+    )
 
 
-def config_from_pretrained(model_type: str) -> GPTConfig:
+def model_config_from_pretrained(model_type: str) -> GPTConfig:
     """Return the configuration for the pretrained model."""
     if model_type not in PRETRAINED:
         raise ValueError(f"Unknown model type: {model_type}")

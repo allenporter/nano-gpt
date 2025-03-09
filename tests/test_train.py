@@ -5,13 +5,14 @@ from unittest.mock import patch
 import torch
 
 from nano_gpt.trainer import TrainStats
-from nano_gpt.config import TrainConfig
+from nano_gpt.config import config_from
 
 
 def test_train_stats() -> None:
     """Test the TrainStats class."""
 
-    config = TrainConfig(B=16, T=256)
+    config = config_from("gpt2", batch_size=16, sequence_length=256).train_config
+    assert config.chunk_token_size == 4096  # Used in tok/sec below
 
     stats = TrainStats(config)
     assert stats.step == 0

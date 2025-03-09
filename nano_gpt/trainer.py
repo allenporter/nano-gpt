@@ -47,7 +47,7 @@ class TrainStats:
         """Step the statistics."""
         t1 = time.time()
         dt = (t1 - self.t0) * 1000
-        tok_per_sec = (self.config.B * self.config.T) / (t1 - self.t0)
+        tok_per_sec = self.config.chunk_token_size / (t1 - self.t0)
         self.stats.update(
             {
                 "step": self.step,
@@ -72,10 +72,7 @@ def train(
     dtype: Any,
 ) -> None:
     """Train the model."""
-    _LOGGER.info("Token batch size: %s", config.B)
-    _LOGGER.info("Sequence length: %s", config.T)
-    _LOGGER.info("Total token batch size: %s", config.total_batch_size)
-    _LOGGER.info("Gradient accumulation steps: %s", config.grad_accum_steps)
+    config.log_info()
 
     optimizer = model.configure_optimizers(
         weight_decay=0.1, learning_rate=get_lr(config, 0), device=device
