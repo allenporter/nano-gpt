@@ -11,7 +11,7 @@ from nano_gpt.config import config_from
 def test_train_stats() -> None:
     """Test the TrainStats class."""
 
-    config = config_from("gpt2", batch_size=16, sequence_length=256).train_config
+    config = config_from("gpt2", micro_batch_size=16, sequence_length=256).train_config
     assert config.chunk_token_size == 4096  # Used in tok/sec below
 
     stats = TrainStats(config)

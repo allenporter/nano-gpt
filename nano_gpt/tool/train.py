@@ -2,7 +2,8 @@
 
 Usage:
 ```
-usage: nano-gpt train [-h] [--device DEVICE] [--batch_size BATCH_SIZE] [--sequence-length SEQUENCE_LENGTH]
+usage: nano-gpt train [-h] [--device DEVICE] [--model MODEL] [--micro-batch-size MICRO_BATCH_SIZE]
+                      [--total-batch-size TOTAL_BATCH_SIZE] [--sequence-length SEQUENCE_LENGTH] [--batch-size BATCH_SIZE]
                       [--seed SEED]
 
 Sample from a model
@@ -10,10 +11,15 @@ Sample from a model
 options:
   -h, --help            show this help message and exit
   --device DEVICE       The device to use for sampling.
-  --batch_size BATCH_SIZE
-                        The number of batches of input from the dataset for training step.
+  --model MODEL         Use the specified model name configuration default values.
+  --micro-batch-size MICRO_BATCH_SIZE
+                        The number of batches of examples to use in each training micro step.
+  --total-batch-size TOTAL_BATCH_SIZE
+                        The number of the batch to use in each training step.
   --sequence-length SEQUENCE_LENGTH
-                        The sequence length used for input content.
+                        The sequence length used for input content in each micro batch.
+  --batch-size BATCH_SIZE
+                        The number of tokens to use in each gradient accumulation batches.
   --seed SEED           The seed to use for training.
 ```
 """
@@ -50,16 +56,28 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         help="Use the specified model name configuration default values.",
     )
     args.add_argument(
-        "--batch_size",
+        "--micro-batch-size",
         type=int,
         default=None,
-        help="The size of the batch to use in each training step.",
+        help="The number of batches of examples to use in each training micro step.",
+    )
+    args.add_argument(
+        "--total-batch-size",
+        type=int,
+        default=None,
+        help="The number of the batch to use in each training step.",
     )
     args.add_argument(
         "--sequence-length",
         type=int,
         default=None,
-        help="The sequence length used for input content.",
+        help="The sequence length used for input content in each micro batch.",
+    )
+    args.add_argument(
+        "--batch-size",
+        type=int,
+        default=None,
+        help="The number of tokens to use in each gradient accumulation batches.",
     )
     args.add_argument(
         "--seed",
@@ -77,9 +95,11 @@ def run(args: argparse.Namespace) -> int:
 
     config = config_from(
         args.model,
-        batch_size=args.batch_size,
+        micro_batch_size=args.micro_batch_size,
         sequence_length=args.sequence_length,
+        total_batch_size=args.total_batch_size,
     )
+    _LOGGER.debug("Config: %s", config)
     tokenizer = get_tokenizer()
     model = GPT(config.model_config, tokenizer=tokenizer)
     _LOGGER.info("Using device %s", args.device)

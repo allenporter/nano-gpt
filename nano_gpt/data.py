@@ -36,7 +36,7 @@ class DataLoader:
 
     def __init__(self, enc: Tokenizer, train_config: TrainConfig, device: Any) -> None:
         """Initialize Dataloader."""
-        self.B = train_config.batch_size
+        self.B = train_config.micro_batch_size
         self.T = train_config.sequence_length
         self.chunk_size = train_config.chunk_token_size
 

@@ -11,11 +11,7 @@ _LOGGER = logging.getLogger(__name__)
 VOCAB_SIZE = 50257  # Fixed size for GPT model checkpoints
 NICE_VOCAB_SIZE = 50304  # Vocab size with nice power of 2, for training
 BLOCK_SIZE = 1024  # Fixed size for GPT model checkpoints
-
-DEFAULT_TRAIN_BATCH_SIZE = (
-    524288  # GPT-2 uses 2**19, ~0.5M, in number of tokens per batch
-)
-DEFAULT_TRAIN_BATCH_SIZE = 16
+DEFAULT_MICRO_BATCH_SIZE = 16
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -45,14 +41,14 @@ class GPTConfig:
 class TrainConfig:
     """Implementats the GPT-3 learning rate."""
 
-    tokens_per_batch: int
+    total_batch_size: int
     """Total batch size in number of tokens for each gradient update.
 
     If this is larger than B * T, then the batch size is divided into
     micro-batches of size B * T as part of gradient accumulation.
     """
 
-    batch_size: int = DEFAULT_TRAIN_BATCH_SIZE
+    micro_batch_size: int = DEFAULT_MICRO_BATCH_SIZE
     """Batch size (micro batch) (B) used for each forward/backward pass."""
 
     sequence_length: int = BLOCK_SIZE
@@ -72,10 +68,10 @@ class TrainConfig:
 
     def __post_init__(self) -> None:
         """Post init."""
-        if self.tokens_per_batch % self.chunk_token_size != 0:
+        if self.total_batch_size % self.chunk_token_size != 0:
             raise ValueError(
                 "Total batch size must be divisible by B * T"
-                f" but got {self.tokens_per_batch} % {self.chunk_token_size}"
+                f" but got {self.total_batch_size} % {self.chunk_token_size}"
             )
 
     @property
@@ -86,18 +82,18 @@ class TrainConfig:
     @property
     def grad_accum_steps(self) -> int:
         """Number of gradient accumulation steps."""
-        return self.tokens_per_batch // self.chunk_token_size
+        return self.total_batch_size // self.chunk_token_size
 
     @property
     def chunk_token_size(self) -> int:
         """Chunk token size."""
-        return self.batch_size * self.sequence_length
+        return self.micro_batch_size * self.sequence_length
 
     def log_info(self) -> None:
         """String representation."""
-        _LOGGER.info("Token batch size: %s", self.batch_size)
+        _LOGGER.info("Token batch size: %s", self.micro_batch_size)
         _LOGGER.info("Sequence length: %s", self.sequence_length)
-        _LOGGER.info("Total token batch size: %s", self.tokens_per_batch)
+        _LOGGER.info("Total token batch size: %s", self.total_batch_size)
         _LOGGER.info("Gradient accumulation steps: %s", self.grad_accum_steps)
 
 
@@ -122,7 +118,7 @@ class Models(enum.Enum):
         "gpt2",  # 124M params
         GPTConfig(n_layer=12, n_head=12, n_embd=768),
         TrainConfig(
-            tokens_per_batch=2**19,  # ~0.5M, in number of tokens
+            total_batch_size=2**19,  # ~0.5M, in number of tokens
             max_lr=6e-4,
         ),
     )
@@ -130,7 +126,7 @@ class Models(enum.Enum):
         "gpt2-medium",  # 350M params
         GPTConfig(n_layer=24, n_head=16, n_embd=1024),
         TrainConfig(
-            tokens_per_batch=2**19,  # ~0.5M, in number of tokens
+            total_batch_size=2**19,  # ~0.5M, in number of tokens
             max_lr=3e-4,
         ),
     )
@@ -138,7 +134,7 @@ class Models(enum.Enum):
         "gpt2-large",  # 774M params
         GPTConfig(n_layer=36, n_head=20, n_embd=1280),
         TrainConfig(
-            tokens_per_batch=2**19,  # ~0.5M, in number of tokens
+            total_batch_size=2**19,  # ~0.5M, in number of tokens
             max_lr=2.5e-4,
         ),
     )
@@ -146,7 +142,7 @@ class Models(enum.Enum):
         "gpt2-xl",  # 1558M params
         GPTConfig(n_layer=48, n_head=25, n_embd=1600),
         TrainConfig(
-            tokens_per_batch=2**20,  #  ~1M, in number of tokens
+            total_batch_size=2**20,  #  ~1M, in number of tokens
             max_lr=2e-4,
         ),
     )
@@ -156,7 +152,7 @@ class Models(enum.Enum):
         "gpt2-xs",  # 58M params
         GPTConfig(n_layer=10, n_head=10, n_embd=512),
         TrainConfig(
-            tokens_per_batch=2**18,  # ~0.25M, in number of tokens
+            total_batch_size=2**18,  # ~0.25M, in number of tokens
             max_lr=3e-4,
         ),
     )
@@ -165,7 +161,7 @@ class Models(enum.Enum):
         "gpt2-xxs",  # ~19M params
         GPTConfig(n_layer=8, n_head=8, n_embd=256),
         TrainConfig(
-            tokens_per_batch=2**18,  # ~0.25M, in number of tokens
+            total_batch_size=2**18,  # ~0.25M, in number of tokens
             max_lr=3e-4,
         ),
     )
@@ -174,7 +170,7 @@ class Models(enum.Enum):
         "gpt2-xxxs",  # ~7M params
         GPTConfig(n_layer=4, n_head=4, n_embd=128),
         TrainConfig(
-            tokens_per_batch=2**17,  # ~0.13M, in number of tokens
+            total_batch_size=2**17,  # ~0.13M, in number of tokens
             max_lr=3e-4,
         ),
     )
@@ -191,19 +187,22 @@ MODELS = {model.value.model_name: model.value for model in Models}
 
 def config_from(
     model_type: str,
-    batch_size: int | None = None,
+    micro_batch_size: int | None = None,
     sequence_length: int | None = None,
+    total_batch_size: int | None = None,
 ) -> TrainedModelConfig:
     """Return the configuration for the model."""
     if (config := MODELS.get(model_type)) is None:
         raise ValueError(f"Unknown model type: {model_type}")
     model_config_updates = {}
     train_config_updates = {}
-    if batch_size is not None:
-        train_config_updates["batch_size"] = batch_size
+    if micro_batch_size is not None:
+        train_config_updates["micro_batch_size"] = micro_batch_size
     if sequence_length is not None:
         train_config_updates["sequence_length"] = sequence_length
         model_config_updates["block_size"] = sequence_length
+    if total_batch_size is not None:
+        train_config_updates["total_batch_size"] = total_batch_size
     return TrainedModelConfig(
         model_name=config.model_name,
         model_config=dataclasses.replace(
