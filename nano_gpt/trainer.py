@@ -63,6 +63,42 @@ class TrainConfig:
         return self.min_lr + coeff * (self.max_lr - self.min_lr)
 
 
+@dataclass
+class TrainStats:
+    """Training statistics."""
+
+    def __init__(self, config: TrainConfig) -> None:
+        """Initialize the training statistics."""
+        self.step = 0
+        self.t0: float = 0.0
+        self.config = config
+        self.stats: dict[str, Any] = {}
+
+    def start_step(self) -> None:
+        """Start the step."""
+        self.t0 = time.time()
+
+    def end_step(self, loss: torch.Tensor, norm: float) -> None:
+        """Step the statistics."""
+        t1 = time.time()
+        dt = (t1 - self.t0) * 1000
+        tok_per_sec = (self.config.B * self.config.T) / (t1 - self.t0)
+        self.stats.update(
+            {
+                "step": self.step,
+                "loss": f"{loss.item():0.4f}",
+                "norm": f"{norm:0.4f}",
+                "dt": f"{dt:0.2f}ms",
+                "tok/sec": f"{tok_per_sec:0.2f}",
+            }
+        )
+        self.step += 1
+
+    def __str__(self) -> str:
+        """String representation."""
+        return " | ".join(f"{key}: {value}" for key, value in self.stats.items())
+
+
 def train(
     model: GPT,
     device: Any,
@@ -82,8 +118,10 @@ def train(
 
     ds = iter(data_loader)
 
+    stats = TrainStats(config)
+
     for step in range(config.max_steps):
-        t0 = time.time()
+        stats.start_step()
         optimizer.zero_grad()
 
         loss: torch.Tensor = torch.tensor(0.0)
@@ -108,18 +146,5 @@ def train(
         if "cuda" in device:
             torch.cuda.synchronize()
 
-        t1 = time.time()
-        dt = (t1 - t0) * 1000
-        tokens_per_sec = (config.B * config.T) / (t1 - t0)
-
-        print(
-            "| ".join(
-                [
-                    f"step {step}",
-                    f"loss {loss.item():0.6f}",
-                    f"norm: {norm:0.4f}",
-                    f"dt: {dt:0.2f}ms",
-                    f"tok/sec: {tokens_per_sec:0.2f}",
-                ]
-            )
-        )
+        stats.end_step(loss, norm)
+        print(stats)
