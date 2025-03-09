@@ -4,8 +4,7 @@ This is a thin wrapper around the HuggingFace transformers library and uses
 the approach from the GPT-2/GPT-3 papers.
 """
 
-from typing import Any, cast
-import inspect
+from typing import cast
 import logging
 
 import torch
@@ -137,7 +136,10 @@ class GPT(nn.Module):
             torch.nn.init.normal_(module.weight, mean=0, std=std)
 
     def configure_optimizers(
-        self, weight_decay: float, learning_rate: float, use_fused: bool,
+        self,
+        weight_decay: float,
+        learning_rate: float,
+        use_fused: bool,
     ) -> torch.optim.AdamW:
         """Return the optimizer."""
         # start with all params that require grad

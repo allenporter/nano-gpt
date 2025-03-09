@@ -2,8 +2,6 @@
 
 from unittest.mock import patch
 
-import torch
-
 from nano_gpt.trainer import TrainStats
 from nano_gpt.config import config_from
 

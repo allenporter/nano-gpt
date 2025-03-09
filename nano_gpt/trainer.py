@@ -75,7 +75,9 @@ def train(
     config.log_info()
     is_cuda = "cuda" in device
     optimizer = model.configure_optimizers(
-        weight_decay=0.1, learning_rate=get_lr(config, 0), use_fused=is_cuda,
+        weight_decay=0.1,
+        learning_rate=get_lr(config, 0),
+        use_fused=is_cuda,
     )
 
     ds = iter(data_loader)
@@ -94,8 +96,8 @@ def train(
             with torch.autocast(device_type=device, dtype=dtype):
                 logits, loss = model(x, y)
             loss = loss / config.grad_accum_steps
-            loss_accum += loss.detach().item()
-            loss.backward()  # type: ignore[no-untyped-call]
+            loss_accum += loss.item()
+            loss.backward()
 
         # Prevent the model from getting large shocks of gradient magnitude
         norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
