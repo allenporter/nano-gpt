@@ -48,5 +48,5 @@ class TiktokenTokenizer(Tokenizer):
 
 
 def get_tokenizer() -> Tokenizer:
-    """Get the tokenizer."""
+    """Get the GPT-2 tokenizer."""
     return TiktokenTokenizer("gpt2")
