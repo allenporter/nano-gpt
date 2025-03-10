@@ -12,6 +12,11 @@ import torch
 from .model import GPT
 from .config import TrainConfig
 
+__all__ = [
+    "train",
+]
+
+
 _LOGGER = logging.getLogger(__name__)
 
 

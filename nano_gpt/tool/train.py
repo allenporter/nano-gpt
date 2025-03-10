@@ -33,7 +33,8 @@ import torch
 from nano_gpt.config import config_from
 from nano_gpt.model import GPT
 from nano_gpt.devices import get_device, get_dtype
-from nano_gpt.datasets.tinyshakespeare import get_data_loader
+from nano_gpt.datasets.tinyshakespeare import load_dataset
+from nano_gpt.datasets.data_loader import preprocess_dataset
 from nano_gpt.tokenizer import get_tokenizer
 from nano_gpt.trainer import train
 
@@ -110,7 +111,8 @@ def run(args: argparse.Namespace) -> int:
     else:
         _LOGGER.debug("Model will not be compiled")
 
-    data_loader = get_data_loader(
+    data_loader = preprocess_dataset(
+        load_dataset(split="train"),
         enc=tokenizer,
         config=config.train_config.dataset_config,
     )

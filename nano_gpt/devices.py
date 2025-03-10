@@ -1,4 +1,4 @@
-"""Library for working with hardware devices devices."""
+"""Library for working with hardware devices."""
 
 import torch
 import logging

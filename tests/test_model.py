@@ -2,7 +2,7 @@
 
 from nano_gpt.model import GPT
 from nano_gpt.config import GPTConfig, config_from
-from nano_gpt.datasets.tinyshakespeare import get_data_loader
+from nano_gpt.datasets.data_loader import preprocess_dataset
 from nano_gpt.tokenizer import Tokenizer
 
 
@@ -23,7 +23,8 @@ def test_block_size(fake_tokenizer: Tokenizer) -> None:
     train_config = config_from(
         "gpt2", micro_batch_size=2, sequence_length=4
     ).train_config
-    data_loader = get_data_loader(
+    data_loader = preprocess_dataset(
+        ["this is test data"],
         fake_tokenizer,
         train_config.dataset_config,
     )

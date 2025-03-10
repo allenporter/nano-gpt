@@ -5,6 +5,15 @@ from dataclasses import dataclass
 import enum
 import logging
 
+__all__ = [
+    "GPTConfig",
+    "DatasetConfig",
+    "TrainConfig",
+    "TrainedModelConfig",
+    "Models",
+    "config_from",
+    "model_config_from_pretrained",
+]
 
 _LOGGER = logging.getLogger(__name__)
 

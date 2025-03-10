@@ -1,8 +1,8 @@
 """Fixtures for nano_gpt tests."""
 
-from unittest.mock import patch
 from collections.abc import Sequence
-from typing import Generator
+import os
+import tempfile
 
 import pytest
 
@@ -28,10 +28,8 @@ def fake_tokenizer() -> Tokenizer:
 
 
 @pytest.fixture(autouse=True)
-def fake_dataset() -> Generator:
-    """Fixture to prepare a fake dataset for testing."""
-    with patch(
-        "nano_gpt.datasets.tinyshakespeare.datasets.load_dataset"
-    ) as mock_load_dataset:
-        mock_load_dataset.return_value = {"train": {"text": ["this is test data"]}}
-        yield
+def huggingface_cache_fixture() -> None:
+    """Fixture to prepare a cache directory for huggingface."""
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        os.environ["HF_HOME"] = tmpdir

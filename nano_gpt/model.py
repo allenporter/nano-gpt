@@ -17,6 +17,10 @@ from .config import GPTConfig, model_config_from_pretrained
 
 _LOGGER = logging.getLogger(__name__)
 
+__all__ = [
+    "GPT",
+]
+
 
 class CausalSelfAttention(nn.Module):
     """Attention module."""
