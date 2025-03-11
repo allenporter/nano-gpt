@@ -7,6 +7,8 @@ from collections.abc import Iterable
 
 import datasets
 
+from .data_loader import MapIterable
+
 __all__ = [
     "load_dataset",
 ]
@@ -15,4 +17,4 @@ __all__ = [
 def load_dataset(split: str) -> Iterable[str]:
     """Load the dataset."""
     ds = datasets.load_dataset("tiny_shakespeare", trust_remote_code=True, split=split)
-    return map(lambda x: x["text"], ds)
+    return MapIterable(lambda x: x["text"], ds)

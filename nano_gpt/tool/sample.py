@@ -32,6 +32,7 @@ import torch
 from nano_gpt.model import GPT
 from nano_gpt.tokenizer import get_tokenizer
 from nano_gpt.devices import get_device
+from nano_gpt.config import PRETRAINED
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
     args.add_argument(
         "--pretrained",
         type=str,
+        choices=PRETRAINED,
         help="The name of the pretrained model to use when sampling.",
     )
     args.add_argument(

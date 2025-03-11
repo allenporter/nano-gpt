@@ -11,6 +11,8 @@ from collections.abc import Iterable
 
 import datasets
 
+from .data_loader import MapIterable
+
 _LOGGER = logging.getLogger(__name__)
 
 __all__ = [
@@ -25,4 +27,4 @@ def load_dataset(split: str) -> Iterable[str]:
     ds = datasets.load_dataset(
         "HuggingFaceFW/fineweb-edu", name="sample-10BT", streaming=True, split=split
     )
-    return map(lambda x: x["text"], ds)
+    return MapIterable(lambda x: x["text"], ds)

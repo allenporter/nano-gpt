@@ -2,16 +2,19 @@
 
 Usage:
 ```
-usage: nano-gpt train [-h] [--device DEVICE] [--model MODEL] [--micro-batch-size MICRO_BATCH_SIZE]
-                      [--total-batch-size TOTAL_BATCH_SIZE] [--sequence-length SEQUENCE_LENGTH] [--batch-size BATCH_SIZE]
-                      [--seed SEED]
+usage: nano-gpt train [-h] [--device DEVICE] [--model {gpt2,gpt2-medium,gpt2-large,gpt2-xl,gpt2-xs,gpt2-xxs,gpt2-xxxs}]
+                      --dataset {tinyshakespeare,finewebedu} [--micro-batch-size MICRO_BATCH_SIZE] [--total-batch-size TOTAL_BATCH_SIZE]
+                      [--sequence-length SEQUENCE_LENGTH] [--batch-size BATCH_SIZE] [--seed SEED]
 
 Sample from a model
 
 options:
   -h, --help            show this help message and exit
   --device DEVICE       The device to use for sampling.
-  --model MODEL         Use the specified model name configuration default values.
+  --model {gpt2,gpt2-medium,gpt2-large,gpt2-xl,gpt2-xs,gpt2-xxs,gpt2-xxxs}
+                        Use the specified model name configuration default values.
+  --dataset {tinyshakespeare,finewebedu}
+                        Use the specified dataset.
   --micro-batch-size MICRO_BATCH_SIZE
                         The number of batches of examples to use in each training micro step.
   --total-batch-size TOTAL_BATCH_SIZE
@@ -30,16 +33,22 @@ from typing import cast
 
 import torch
 
-from nano_gpt.config import config_from
+from nano_gpt.config import config_from, MODELS
 from nano_gpt.model import GPT
 from nano_gpt.devices import get_device, get_dtype
-from nano_gpt.datasets.tinyshakespeare import load_dataset
+from nano_gpt.datasets import tinyshakespeare, finewebedu
 from nano_gpt.datasets.data_loader import preprocess_dataset
 from nano_gpt.tokenizer import get_tokenizer
 from nano_gpt.trainer import train
 
 
 _LOGGER = logging.getLogger(__name__)
+
+
+DATASETS = {
+    "tinyshakespeare": tinyshakespeare.load_dataset,
+    "finewebedu": finewebedu.load_dataset,
+}
 
 
 def create_arguments(args: argparse.ArgumentParser) -> None:
@@ -54,7 +63,15 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         "--model",
         type=str,
         default="gpt2",
+        choices=MODELS,
         help="Use the specified model name configuration default values.",
+    )
+    args.add_argument(
+        "--dataset",
+        type=str,
+        help="Use the specified dataset.",
+        choices=DATASETS,
+        required=True,
     )
     args.add_argument(
         "--micro-batch-size",
@@ -111,11 +128,15 @@ def run(args: argparse.Namespace) -> int:
     else:
         _LOGGER.debug("Model will not be compiled")
 
+    dataset_fn = DATASETS[args.dataset]
+    _LOGGER.info("Loading dataset %s", args.dataset)
+
     data_loader = preprocess_dataset(
-        load_dataset(split="train"),
+        dataset_fn(split="train"),
         enc=tokenizer,
         config=config.train_config.dataset_config,
     )
+    _LOGGER.info("Dataset loaded")
     train(
         model,
         args.device,

@@ -184,21 +184,11 @@ class Models(enum.Enum):
             max_lr=3e-4,
         ),
     )
-
     GPT2_XXS = TrainedModelConfig(
-        "gpt2-xxs",  # ~19M params
-        GPTConfig(n_layer=8, n_head=8, n_embd=256),
+        "gpt2-xxs",  # ~3M params
+        GPTConfig(n_layer=4, n_head=4, n_embd=64),
         TrainConfig(
-            total_batch_size=2**18,  # ~0.25M, in number of tokens
-            max_lr=3e-4,
-        ),
-    )
-
-    GPT2_XXXS = TrainedModelConfig(
-        "gpt2-xxxs",  # ~7M params
-        GPTConfig(n_layer=4, n_head=4, n_embd=128),
-        TrainConfig(
-            total_batch_size=2**17,  # ~0.13M, in number of tokens
+            total_batch_size=2**16,  # ~0.065M, in number of tokens
             max_lr=3e-4,
         ),
     )
