@@ -29,9 +29,8 @@ from typing import cast
 import torch
 from torch.nn import functional as F
 
-from nano_gpt.model import GPT
 from nano_gpt.datasets import hellaswag
-from nano_gpt.devices import get_device, get_dtype
+from nano_gpt.devices import get_dtype
 
 from .model_config import create_model_arguments, model_from_args
 

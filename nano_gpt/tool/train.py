@@ -29,16 +29,12 @@ options:
 
 import argparse
 import logging
-from typing import cast
 
 import torch
 
-from nano_gpt.config import config_from, MODELS
-from nano_gpt.model import GPT
-from nano_gpt.devices import get_device, get_dtype
+from nano_gpt.devices import get_dtype
 from nano_gpt.datasets import tinyshakespeare, finewebedu
 from nano_gpt.datasets.data_loader import preprocess_dataset
-from nano_gpt.tokenizer import get_tokenizer
 from nano_gpt.trainer import train
 
 from .model_config import create_model_arguments, model_from_args

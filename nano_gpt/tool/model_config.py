@@ -1,6 +1,5 @@
 """Shared library for command line flags for loading models."""
 
-
 from argparse import ArgumentParser
 import logging
 from typing import Any, cast
@@ -14,7 +13,10 @@ from nano_gpt.tokenizer import get_tokenizer, Tokenizer
 
 _LOGGER = logging.getLogger(__name__)
 
-def create_model_arguments(args: ArgumentParser, default_values: dict[str, Any] = None) -> None:
+
+def create_model_arguments(
+    args: ArgumentParser, default_values: dict[str, Any] | None = None
+) -> None:
     """Create arguments for model loading."""
     if default_values is None:
         default_values = {}
@@ -51,6 +53,7 @@ def create_model_arguments(args: ArgumentParser, default_values: dict[str, Any] 
         help="The seed to use for sampling/training.",
     )
 
+
 def _check_model_arguments(args: Any) -> None:
     """Check that the model arguments are valid."""
     if args.pretrained is None and args.model is None:
@@ -58,9 +61,10 @@ def _check_model_arguments(args: Any) -> None:
     if args.pretrained is not None and args.model is not None:
         raise ValueError("Only one of --pretrained or --model can be specified")
 
+
 def model_from_args(args: Any) -> tuple[GPT, Tokenizer, TrainedModelConfig | None]:
     """Create a model from the flags."""
-    _check_model_arguments(args)    
+    _check_model_arguments(args)
     tokenizer = get_tokenizer()
     trained_model_config: TrainedModelConfig | None = None
     if args.pretrained is not None:
@@ -73,10 +77,11 @@ def model_from_args(args: Any) -> tuple[GPT, Tokenizer, TrainedModelConfig | Non
                 key: value
                 for key in {"micro_batch_size", "sequence_length", "total_batch_size"}
                 if (value := getattr(args, key, None)) is not None
-            }
+            },
         )
-        _LOGGER.debug("initializing new model from config: %s", trained_model_config.model_config)
-        model = GPT(trained_model_config.model_config, tokenizer=tokenizer)
+        model_config = trained_model_config.model_config
+        _LOGGER.debug("initializing model from config: %s", model_config)
+        model = GPT(model_config, tokenizer=tokenizer)
     model.to(args.device)
     if args.device == "cuda":
         _LOGGER.debug("Compiling model")

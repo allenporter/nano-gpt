@@ -14,7 +14,6 @@ from transformers import GPT2LMHeadModel
 
 from .tokenizer import Tokenizer
 from .config import GPTConfig, model_config_from_pretrained
-from .devices import get_dtype
 
 _LOGGER = logging.getLogger(__name__)
 

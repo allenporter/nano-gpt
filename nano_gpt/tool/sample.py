@@ -33,24 +33,15 @@ model:
 import argparse
 import logging
 
-import torch
+from .model_config import create_model_arguments, model_from_args
 
-from nano_gpt.model import GPT
 
 _LOGGER = logging.getLogger(__name__)
-
-from .model_config import create_model_arguments, model_from_args
 
 
 def create_arguments(args: argparse.ArgumentParser) -> None:
     """Get parsed passed in arguments."""
-    create_model_arguments(
-        args,
-        default_values={
-            "seed": 42,
-            "pretrained": "gpt2"
-        }
-    )
+    create_model_arguments(args, default_values={"seed": 42, "pretrained": "gpt2"})
     args.add_argument(
         "--num-sequences",
         type=int,
@@ -70,7 +61,6 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         default=["Hello, I'm a language model,"],
         help="The text to use as a prompt for sampling.",
     )
-    
 
 
 def run(args: argparse.Namespace) -> int:
