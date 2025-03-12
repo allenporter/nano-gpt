@@ -2,15 +2,23 @@
 
 Usage:
 ```
-usage: nano-gpt eval [-h] [--pretrained {gpt2-xl,gpt2-medium,gpt2-large,gpt2}] [--device DEVICE]
+usage: nano-gpt eval [-h] [--pretrained {gpt2-medium,gpt2-xl,gpt2-large,gpt2}] [--model {gpt2,gpt2-medium,gpt2-large,gpt2-xl,gpt2-xs,gpt2-xxs}]
+                     [--device DEVICE] [--sequence-length SEQUENCE_LENGTH] [--seed SEED]
 
 Evaluate a model
 
 options:
   -h, --help            show this help message and exit
-  --pretrained {gpt2-xl,gpt2-medium,gpt2-large,gpt2}
-                        The name of the pretrained model to use when sampling.
-  --device DEVICE       The device to use for sampling.
+
+model:
+  --pretrained {gpt2-medium,gpt2-xl,gpt2-large,gpt2}
+                        The name of the pretrained model to use.
+  --model {gpt2,gpt2-medium,gpt2-large,gpt2-xl,gpt2-xs,gpt2-xxs}
+                        Use the specified model name configuration default values.
+  --device DEVICE       The device to use.
+  --sequence-length SEQUENCE_LENGTH
+                        The sequence length used for input content in each micro batch.
+  --seed SEED           The seed to use for sampling/training.
 ```
 """
 
@@ -22,10 +30,10 @@ import torch
 from torch.nn import functional as F
 
 from nano_gpt.model import GPT
-from nano_gpt.tokenizer import get_tokenizer
-from nano_gpt.devices import get_device, get_dtype
-from nano_gpt.config import PRETRAINED
 from nano_gpt.datasets import hellaswag
+from nano_gpt.devices import get_device, get_dtype
+
+from .model_config import create_model_arguments, model_from_args
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,18 +43,7 @@ SPLIT = "validation"
 
 def create_arguments(args: argparse.ArgumentParser) -> None:
     """Get parsed passed in arguments."""
-    args.add_argument(
-        "--pretrained",
-        type=str,
-        choices=PRETRAINED,
-        help="The name of the pretrained model to use when sampling.",
-    )
-    args.add_argument(
-        "--device",
-        type=str,
-        default=get_device(),
-        help="The device to use for sampling.",
-    )
+    create_model_arguments(args)
 
 
 def get_likely_row(
@@ -79,10 +76,9 @@ def get_likely_row(
 def run(args: argparse.Namespace) -> int:
     """Run the sample command."""
     torch.set_float32_matmul_precision("high")
-    model = GPT.from_pretrained(args.pretrained, get_tokenizer())
+
+    model, tokenizer, _ = model_from_args(args)
     model.eval()
-    model = model.to(args.device)
-    tokenizer = get_tokenizer()
 
     num_total = 0
     num_correct = 0

@@ -41,6 +41,8 @@ from nano_gpt.datasets.data_loader import preprocess_dataset
 from nano_gpt.tokenizer import get_tokenizer
 from nano_gpt.trainer import train
 
+from .model_config import create_model_arguments, model_from_args
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,19 +55,7 @@ DATASETS = {
 
 def create_arguments(args: argparse.ArgumentParser) -> None:
     """Get parsed passed in arguments."""
-    args.add_argument(
-        "--device",
-        type=str,
-        default=get_device(),
-        help="The device to use for sampling.",
-    )
-    args.add_argument(
-        "--model",
-        type=str,
-        default="gpt2",
-        choices=MODELS,
-        help="Use the specified model name configuration default values.",
-    )
+    create_model_arguments(args)
     args.add_argument(
         "--dataset",
         type=str,
@@ -86,47 +76,20 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         help="The number of the batch to use in each training step.",
     )
     args.add_argument(
-        "--sequence-length",
-        type=int,
-        default=None,
-        help="The sequence length used for input content in each micro batch.",
-    )
-    args.add_argument(
         "--batch-size",
         type=int,
         default=None,
         help="The number of tokens to use in each gradient accumulation batches.",
     )
-    args.add_argument(
-        "--seed",
-        type=int,
-        default=42,
-        help="The seed to use for training.",
-    )
 
 
 def run(args: argparse.Namespace) -> int:
     """Run the sample command."""
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed(args.seed)
     torch.set_float32_matmul_precision("high")
 
-    config = config_from(
-        args.model,
-        micro_batch_size=args.micro_batch_size,
-        sequence_length=args.sequence_length,
-        total_batch_size=args.total_batch_size,
-    )
-    _LOGGER.debug("Config: %s", config)
-    tokenizer = get_tokenizer()
-    model = GPT(config.model_config, tokenizer=tokenizer)
-    _LOGGER.info("Using device %s", args.device)
-    model = model.to(args.device)
-    if args.device == "cuda":
-        _LOGGER.debug("Compiling model")
-        model = cast(GPT, torch.compile(model))
-    else:
-        _LOGGER.debug("Model will not be compiled")
+    model, tokenizer, config = model_from_args(args)
+    if config is None:
+        raise ValueError("No trainable model configuration found")
 
     dataset_fn = DATASETS[args.dataset]
     _LOGGER.info("Loading dataset %s", args.dataset)

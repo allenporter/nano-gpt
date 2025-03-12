@@ -2,8 +2,8 @@
 
 Usage:
 ```
-usage: nano-gpt sample [-h] [--pretrained PRETRAINED] [--device DEVICE] [--num-sequences NUM_SEQUENCES] [--max-length MAX_LENGTH]
-                       [--seed SEED]
+usage: nano-gpt sample [-h] [--pretrained {gpt2-xl,gpt2,gpt2-medium,gpt2-large}] [--model {gpt2,gpt2-medium,gpt2-large,gpt2-xl,gpt2-xs,gpt2-xxs}]
+                       [--device DEVICE] [--sequence-length SEQUENCE_LENGTH] [--seed SEED] [--num-sequences NUM_SEQUENCES] [--max-length MAX_LENGTH]
                        [text ...]
 
 Sample from a model
@@ -13,14 +13,20 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
-  --pretrained PRETRAINED
-                        The name of the pretrained model to use when sampling.
-  --device DEVICE       The device to use for sampling.
   --num-sequences NUM_SEQUENCES
                         The number of sequences to generate.
   --max-length MAX_LENGTH
                         The maximum length of the generated sequences.
-  --seed SEED           The seed to use for sampling.
+
+model:
+  --pretrained {gpt2-xl,gpt2,gpt2-medium,gpt2-large}
+                        The name of the pretrained model to use.
+  --model {gpt2,gpt2-medium,gpt2-large,gpt2-xl,gpt2-xs,gpt2-xxs}
+                        Use the specified model name configuration default values.
+  --device DEVICE       The device to use.
+  --sequence-length SEQUENCE_LENGTH
+                        The sequence length used for input content in each micro batch.
+  --seed SEED           The seed to use for sampling/training.
 ```
 """
 
@@ -30,26 +36,20 @@ import logging
 import torch
 
 from nano_gpt.model import GPT
-from nano_gpt.tokenizer import get_tokenizer
-from nano_gpt.devices import get_device
-from nano_gpt.config import PRETRAINED
 
 _LOGGER = logging.getLogger(__name__)
+
+from .model_config import create_model_arguments, model_from_args
 
 
 def create_arguments(args: argparse.ArgumentParser) -> None:
     """Get parsed passed in arguments."""
-    args.add_argument(
-        "--pretrained",
-        type=str,
-        choices=PRETRAINED,
-        help="The name of the pretrained model to use when sampling.",
-    )
-    args.add_argument(
-        "--device",
-        type=str,
-        default=get_device(),
-        help="The device to use for sampling.",
+    create_model_arguments(
+        args,
+        default_values={
+            "seed": 42,
+            "pretrained": "gpt2"
+        }
     )
     args.add_argument(
         "--num-sequences",
@@ -64,29 +64,20 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         help="The maximum length of the generated sequences.",
     )
     args.add_argument(
-        "--seed",
-        type=int,
-        default=42,
-        help="The seed to use for sampling.",
-    )
-    args.add_argument(
         "text",
         type=str,
         nargs="*",
         default=["Hello, I'm a language model,"],
         help="The text to use as a prompt for sampling.",
     )
+    
 
 
 def run(args: argparse.Namespace) -> int:
     """Run the sample command."""
-    model = GPT.from_pretrained(args.pretrained, get_tokenizer())
+    model, _, _ = model_from_args(args)
     model.eval()
-    model = model.to(args.device)
-    _LOGGER.info("Using device %s", args.device)
 
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed(args.seed)
     print(args.text)
     samples = model.sample(
         " ".join(args.text),
