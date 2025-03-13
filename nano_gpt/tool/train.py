@@ -69,13 +69,7 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         "--total-batch-size",
         type=int,
         default=None,
-        help="The number of the batch to use in each training step.",
-    )
-    args.add_argument(
-        "--batch-size",
-        type=int,
-        default=None,
-        help="The number of tokens to use in each gradient accumulation batches.",
+        help="The number of tokens to use in each gradient accumulation batch (of micro-batches).",
     )
 
 
