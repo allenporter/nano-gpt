@@ -27,6 +27,7 @@ DATASETS = {
     "tinyshakespeare": tinyshakespeare.load_dataset,
     "finewebedu": finewebedu.load_dataset,
 }
+SPLITS = {"train", "validation"}
 
 
 def create_arguments(args: argparse.ArgumentParser) -> None:
@@ -38,6 +39,12 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         choices=DATASETS,
         required=True,
     )
+    args.add_argument(
+        "--splits",
+        type=str,
+        help="Use the specified dataset.",
+        default=",".join(SPLITS),
+    )
 
 
 def run(args: argparse.Namespace) -> int:
@@ -45,6 +52,11 @@ def run(args: argparse.Namespace) -> int:
     dataset_fn = DATASETS[args.dataset]
     _LOGGER.info("Loading dataset %s", args.dataset)
 
-    dataset_fn(split="train", streaming=False)
+    splits = args.splits.split(",")
+    for split in splits:
+        if split not in SPLITS:
+            raise ValueError(f"Invalid split {split}, must be one of {SPLITS}")
+        _LOGGER.info("Loading dataset %s for split %s", args.dataset, split)
+        dataset_fn(split=split, streaming=False)
 
     return 0
