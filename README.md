@@ -69,3 +69,16 @@ This will download the huggingface dataset into your `~/.cache` directory.
 ```bash
 $ nano-gpt prepare_dataset --dataset=finewebedu --splits=train,validation
 ```
+
+## Work Plan
+
+Status: Everything works, however the GPU is not fully saturated given the I/O
+  is not isolated out of the training loop.
+
+- [ ] Update `prepare_dataset` to pre-tokenize the dataset
+- [ ] Determine output storage location
+- [ ] Add support for training from pre-tokenized files
+- [ ] Add output write sharding
+- [ ] Add input read sharding
+- [ ] Update pre-tokenized `train` vs `validation` splits
+- [ ] Loading of pre-tokenized datasets by slit
