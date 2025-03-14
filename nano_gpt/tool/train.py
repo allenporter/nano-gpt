@@ -71,7 +71,13 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         default=None,
         help="The number of tokens to use in each gradient accumulation batch (of micro-batches).",
     )
-
+    args.add_argument(
+        "--streaming",
+        type=str,
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Stream the dataset without downloading the entire corpus.",
+    )
 
 def run(args: argparse.Namespace) -> int:
     """Run the sample command."""
@@ -82,10 +88,10 @@ def run(args: argparse.Namespace) -> int:
         raise ValueError("No trainable model configuration found")
 
     dataset_fn = DATASETS[args.dataset]
-    _LOGGER.info("Loading dataset %s", args.dataset)
+    _LOGGER.info("Loading dataset %s (streaming=%s)", args.dataset, args.streaming)
 
-    data_loader = preprocess_dataset(
-        dataset_fn(split="train"),
+    training_dataset = preprocess_dataset(
+        dataset_fn(split="train", streaming=args.streaming),
         enc=tokenizer,
         config=config.train_config.dataset_config,
     )
@@ -93,7 +99,7 @@ def run(args: argparse.Namespace) -> int:
     train(
         model,
         args.device,
-        data_loader,
+        training_dataset,
         config.train_config,
         dtype=get_dtype(args.device),
     )
