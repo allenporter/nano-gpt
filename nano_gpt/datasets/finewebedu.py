@@ -36,6 +36,6 @@ def load_dataset(split: str, streaming: bool = True) -> Iterable[str]:
         "HuggingFaceFW/fineweb-edu",
         name="sample-10BT",
         streaming=streaming,
-        split=split,
+        split="train",
     )
     return MapIterable(lambda x: x["text"], ds)
