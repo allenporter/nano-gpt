@@ -1,6 +1,6 @@
 """Shared library for command line flags for loading models."""
 
-from argparse import ArgumentParser
+from argparse import ArgumentParser, BooleanOptionalAction
 import logging
 from typing import Any, cast
 
@@ -57,6 +57,13 @@ def create_model_arguments(
         default=default_values.get("seed", 0),
         help="The seed to use for sampling/training.",
     )
+    group.add_argument(
+        "--compile",
+        type=str,
+        action=BooleanOptionalAction,
+        default=True,
+        help="Will compile the model if supported by the device.",
+    )
 
 
 def _check_model_arguments(args: Any) -> None:
@@ -101,8 +108,11 @@ def model_from_args(args: Any) -> tuple[GPT, Tokenizer, TrainedModelConfig | Non
         model = GPT(model_config, tokenizer=tokenizer)
     model.to(args.device)
     if args.device == "cuda":
-        _LOGGER.debug("Compiling model")
-        model = cast(GPT, torch.compile(model))
+        if args.compile:
+            _LOGGER.debug("Compiling model")
+            model = cast(GPT, torch.compile(model))
+        else:
+            _LOGGER.debug("Not compiling model")
     else:
         _LOGGER.debug("Model will not be compiled")
 
