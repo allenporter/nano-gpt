@@ -63,8 +63,6 @@ def _check_model_arguments(args: Any) -> None:
     """Check that the model arguments are valid."""
     if args.pretrained is None and args.model is None:
         raise ValueError("Either --pretrained or --model must be specified")
-    if args.pretrained is not None and args.model is not None:
-        raise ValueError("Only one of --pretrained or --model can be specified")
 
 
 def model_config_from_args(
