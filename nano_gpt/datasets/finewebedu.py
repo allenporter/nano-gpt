@@ -19,12 +19,16 @@ __all__ = [
     "load_dataset",
 ]
 
-TOKEN_SiZE = 2**20
+TOKEN_SIZE = 2**20
+SHARD_TOKEN_SIZE = int(1e8)  # 100M tokens
 
 
-def load_dataset(split: str) -> Iterable[str]:
+def load_dataset(split: str, streaming: bool = True) -> Iterable[str]:
     """Load the dataset."""
     ds = datasets.load_dataset(
-        "HuggingFaceFW/fineweb-edu", name="sample-10BT", streaming=True, split=split
+        "HuggingFaceFW/fineweb-edu",
+        name="sample-10BT",
+        streaming=streaming,
+        split=split,
     )
     return MapIterable(lambda x: x["text"], ds)

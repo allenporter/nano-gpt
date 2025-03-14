@@ -2,6 +2,7 @@
 
 __all__ = [
     "sample",
-    "train",
     "eval",
+    "train",
+    "prepare_dataset",
 ]

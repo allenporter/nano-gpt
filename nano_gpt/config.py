@@ -50,10 +50,10 @@ class GPTConfig:
 class DatasetConfig:
     """This class defines the configuration for chunking the dataset."""
 
-    micro_batch_size: int
+    micro_batch_size: int = DEFAULT_MICRO_BATCH_SIZE
     """Batch size (micro batch) (B) used for each forward/backward pass."""
 
-    sequence_length: int
+    sequence_length: int = BLOCK_SIZE
     """Sequence length (T) used for input content. Same as block_size."""
 
     @property

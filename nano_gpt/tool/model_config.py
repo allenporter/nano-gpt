@@ -6,7 +6,12 @@ from typing import Any, cast
 
 import torch
 
-from nano_gpt.config import MODELS, PRETRAINED, config_from, TrainedModelConfig
+from nano_gpt.config import (
+    MODELS,
+    PRETRAINED,
+    config_from,
+    TrainedModelConfig,
+)
 from nano_gpt.model import GPT
 from nano_gpt.devices import get_device
 from nano_gpt.tokenizer import get_tokenizer, Tokenizer
@@ -30,7 +35,7 @@ def create_model_arguments(
     group.add_argument(
         "--model",
         type=str,
-        default=default_values.get("gpt2"),
+        default=default_values.get("model", "gpt2"),
         choices=MODELS,
         help="Use the specified model name configuration default values.",
     )
@@ -60,6 +65,20 @@ def _check_model_arguments(args: Any) -> None:
         raise ValueError("Either --pretrained or --model must be specified")
     if args.pretrained is not None and args.model is not None:
         raise ValueError("Only one of --pretrained or --model can be specified")
+
+
+def model_config_from_args(
+    args: Any,
+) -> TrainedModelConfig:
+    """Create a model from the flags."""
+    return config_from(
+        args.model,
+        **{
+            key: value
+            for key in {"micro_batch_size", "sequence_length", "total_batch_size"}
+            if (value := getattr(args, key, None)) is not None
+        },
+    )
 
 
 def model_from_args(args: Any) -> tuple[GPT, Tokenizer, TrainedModelConfig | None]:
