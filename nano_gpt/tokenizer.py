@@ -47,6 +47,31 @@ class TiktokenTokenizer(Tokenizer):
         return self.encoding.decode(tokens)
 
 
+class DocumentTokenizer(Tokenizer):
+    """Tokenizer for GPT-2 using tiktoken that encodes documents."""
+
+    def __init__(self, encoding_name: str) -> None:
+        """Initialize the tokenizer."""
+        self.encoding = tiktoken.get_encoding(encoding_name)
+        self._eot = self.encoding._special_tokens["<|endoftext|>"]
+
+    def encode(self, text: str) -> list[int]:
+        """Encode the text into tokens."""
+        tokens = [self._eot]
+        # Ignore any special tokesn in the document
+        tokens.extend(self.encoding.encode_ordinary(text))
+        return tokens
+
+    def decode(self, tokens: Sequence[int]) -> str:
+        """Decode the tokens into text."""
+        raise NotImplementedError("DocumentTokenizer does not support decoding")
+
+
 def get_tokenizer() -> Tokenizer:
     """Get the GPT-2 tokenizer."""
     return TiktokenTokenizer("gpt2")
+
+
+def get_document_tokenizer() -> Tokenizer:
+    """Get the GPT-2 tokenizer for encoding documents for pre-training (only)."""
+    return DocumentTokenizer("gpt2")
