@@ -27,3 +27,45 @@ $ uv venv --python3.13
 $ source .venv/bin/activate
 $ uv pip install -r requirements_dev.txt
 ```
+
+## Sample
+
+This example will download the pretrained gpt2 and sample from it with the given prefix:
+
+```bash
+$ nano-gpt sample --pretrained=gpt2 --seed=42 --max-length=30 "Hello, I'm a language model," 
+> Hello, I'm a language model, which means I'm familiar with it, but I'm not fluent in that. Well, with that said,
+> Hello, I'm a language model, and the syntax, to make use of it, is pretty good. So why do you have that and not
+> Hello, I'm a language model, I'm doing this work in Python, and then I'm writing code for Haskell.
+
+So we can
+> Hello, I'm a language model, and you're making assumptions about my use of them. I'm not a natural language learner. I'm
+> Hello, I'm a language model, well, I'm from Java and have to write a programming language for it. I have my own vocabulary because
+```
+
+## Eval
+
+This example will evaluate hellaswag against the pretrained gpt2:
+
+```bash
+$ nano-gpt eval --pretrained=gpt2       
+Accuracy: 0/1 = 0.0000
+Accuracy: 0/2 = 0.0000
+Accuracy: 1/3 = 0.3333
+Accuracy: 1/4 = 0.2500
+Accuracy: 1/5 = 0.2000
+Accuracy: 1/6 = 0.1667
+Accuracy: 1/7 = 0.1429
+Accuracy: 1/8 = 0.1250
+Accuracy: 1/9 = 0.1111
+Accuracy: 1/10 = 0.1000
+Accuracy: 2/11 = 0.1818
+```
+
+## Prepare training dataset
+
+This will download the huggingface dataset into your `~/.cache` directory.
+
+```bash
+$ nano-gpt prepare_dataset --dataset=finewebedu --splits=train,validation
+```
