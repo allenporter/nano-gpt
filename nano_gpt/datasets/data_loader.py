@@ -3,10 +3,12 @@
 import itertools
 from collections.abc import Iterable, Generator, Callable, Iterator
 import logging
+import pathlib
 from typing import TypeVar
 
 import torch
 import datasets
+import numpy as np
 
 from nano_gpt.tokenizer import Tokenizer
 from nano_gpt.config import DatasetConfig
@@ -60,6 +62,23 @@ def tokenize_dataset(
     return MapIterable(torch.tensor, tokenized_ds)
 
 
+def chunk_input(
+    config: DatasetConfig,
+    tokens: torch.Tensor,
+) -> list[tuple[torch.Tensor, torch.Tensor]]:
+    """Chunk the input into batches."""
+    B, T = config.micro_batch_size, config.sequence_length
+    pos = 0
+    results: list[tuple[torch.Tensor, torch.Tensor]] = []
+    while (pos + config.chunk_token_size + 1) < len(tokens):
+        buf = tokens[pos : pos + config.chunk_token_size + 1]
+        x = buf[:-1].view(B, T)
+        y = buf[1:].view(B, T)
+        results.append((x, y))
+        pos += config.chunk_token_size
+    return results
+
+
 def chunk_dataset(
     config: DatasetConfig,
     ds: Iterable[torch.Tensor],
@@ -71,24 +90,14 @@ def chunk_dataset(
     the dataset config.
     """
 
-    B, T = config.micro_batch_size, config.sequence_length
-
-    def chunk_input(
+    def _chunk_input(
         tokens: torch.Tensor,
     ) -> list[tuple[torch.Tensor, torch.Tensor]]:
         """Chunk the input into batches."""
-        pos = 0
-        results: list[tuple[torch.Tensor, torch.Tensor]] = []
-        while (pos + config.chunk_token_size + 1) < len(tokens):
-            buf = tokens[pos : pos + config.chunk_token_size + 1]
-            x = buf[:-1].view(B, T)
-            y = buf[1:].view(B, T)
-            results.append((x, y))
-            pos += config.chunk_token_size
-        return results
+        return chunk_input(config, tokens)
 
     chunked = MapIterable(
-        chunk_input,
+        _chunk_input,
         ds,
     )
     return ChainIterable(chunked)
@@ -123,13 +132,24 @@ def preprocess_dataset(
 def preprocess_corpus(
     ds: datasets.Dataset,
     enc: Tokenizer,
-    config: DatasetConfig,
+    output_path: pathlib.Path,
     text_column: str = "text",
-) -> Generator[tuple[torch.Tensor, torch.Tensor]]:
-    """Preprocess a huggingface dataset.
-    
-    This is a one-shot approach that does does processing on the fly in
-    a way that is not efficient.
-    """
+) -> None:
+    """Preprocess a huggingface dataset and write to an output file."""
     text_ds = MapIterable(lambda x: x["text"], ds)
-    return preprocess_dataset(text_ds, enc, config)
+    tokenized_ds = tokenize_dataset(enc, text_ds)
+    tokens = torch.concat(list(tokenized_ds))
+    tokens_np = np.array(tokens)
+    np.save(output_path, tokens_np)
+
+
+def read_preprocessed_corpus(
+    token_path: pathlib.Path,
+    config: DatasetConfig,
+) -> Generator[tuple[torch.Tensor, torch.Tensor]]:
+    """Read the preprocessed corpus."""
+    tokens_np = np.load(token_path)
+    tokens = torch.from_numpy(tokens_np)
+    while True:
+        for chunk in chunk_input(config, tokens):
+            yield chunk

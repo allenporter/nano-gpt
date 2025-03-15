@@ -1,14 +1,18 @@
 """Tests for the data loader."""
 
+from collections.abc import Generator
 import itertools
+import pathlib
+import tempfile
 
+import pytest
 import datasets
 
 from nano_gpt.datasets.data_loader import (
     chunk_dataset,
     tokenize_dataset,
     cycle_dataset,
-    preprocess_dataset,
+    read_preprocessed_corpus,
     preprocess_corpus,
     MapIterable,
 )
@@ -73,12 +77,24 @@ def test_cycle_dataset(fake_tokenizer: Tokenizer) -> None:
     ]
 
 
-def test_preprocess_corpust(fake_tokenizer: Tokenizer) -> None:
+@pytest.fixture
+def tmpdir() -> Generator[pathlib.Path]:
+    """Fixture for temporary directory."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        yield pathlib.Path(tmpdir)
+
+
+def test_preprocess_corpus(fake_tokenizer: Tokenizer, tmpdir: pathlib.Path) -> None:
     """Test preprocess_corpus."""
 
-    ds = preprocess_corpus(
+    tmp_path = pathlib.Path(tmpdir) / "finewebedu.npy"
+    preprocess_corpus(
         datasets.Dataset.from_dict({"text": ["this is test data"]}),
         fake_tokenizer,
+        tmp_path,
+    )
+    ds = read_preprocessed_corpus(
+        tmp_path,
         DatasetConfig(micro_batch_size=2, sequence_length=2),
     )
     limited_iter = itertools.islice(ds, 10)
