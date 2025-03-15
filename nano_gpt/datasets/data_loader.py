@@ -139,7 +139,7 @@ def preprocess_corpus(
     text_ds = MapIterable(lambda x: x["text"], ds)
     tokenized_ds = tokenize_dataset(enc, text_ds)
     tokens = torch.concat(list(tokenized_ds))
-    tokens_np = np.array(tokens)
+    tokens_np = np.asarray(tokens, dtype=np.uint32)
     np.save(output_path, tokens_np)
 
 

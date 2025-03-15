@@ -93,6 +93,7 @@ def test_preprocess_corpus(fake_tokenizer: Tokenizer, tmpdir: pathlib.Path) -> N
         fake_tokenizer,
         tmp_path,
     )
+    assert len(list(tmpdir.glob("*.npy"))) == 1
     ds = read_preprocessed_corpus(
         tmp_path,
         DatasetConfig(micro_batch_size=2, sequence_length=2),
