@@ -2,11 +2,14 @@
 
 import itertools
 
+import datasets
+
 from nano_gpt.datasets.data_loader import (
     chunk_dataset,
     tokenize_dataset,
     cycle_dataset,
     preprocess_dataset,
+    preprocess_corpus,
     MapIterable,
 )
 from nano_gpt.config import DatasetConfig
@@ -70,11 +73,11 @@ def test_cycle_dataset(fake_tokenizer: Tokenizer) -> None:
     ]
 
 
-def test_preoprocess_dataset(fake_tokenizer: Tokenizer) -> None:
-    """Test preprocess_dataset."""
+def test_preprocess_corpust(fake_tokenizer: Tokenizer) -> None:
+    """Test preprocess_corpus."""
 
-    ds = preprocess_dataset(
-        ["this is test data"],
+    ds = preprocess_corpus(
+        datasets.Dataset.from_dict({"text": ["this is test data"]}),
         fake_tokenizer,
         DatasetConfig(micro_batch_size=2, sequence_length=2),
     )

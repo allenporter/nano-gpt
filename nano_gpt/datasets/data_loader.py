@@ -6,6 +6,7 @@ import logging
 from typing import TypeVar
 
 import torch
+import datasets
 
 from nano_gpt.tokenizer import Tokenizer
 from nano_gpt.config import DatasetConfig
@@ -117,3 +118,18 @@ def preprocess_dataset(
     tokenized_ds = tokenize_dataset(enc, ds)
     chunked_ds = chunk_dataset(config, tokenized_ds)
     return cycle_dataset(chunked_ds)
+
+
+def preprocess_corpus(
+    ds: datasets.Dataset,
+    enc: Tokenizer,
+    config: DatasetConfig,
+    text_column: str = "text",
+) -> Generator[tuple[torch.Tensor, torch.Tensor]]:
+    """Preprocess a huggingface dataset.
+    
+    This is a one-shot approach that does does processing on the fly in
+    a way that is not efficient.
+    """
+    text_ds = MapIterable(lambda x: x["text"], ds)
+    return preprocess_dataset(text_ds, enc, config)
