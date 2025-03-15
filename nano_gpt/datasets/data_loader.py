@@ -143,13 +143,24 @@ def preprocess_corpus(
     np.save(output_path, tokens_np)
 
 
+class TokenizedFileReader:
+    """A file reader that reads tokenized files."""
+
+    def __init__(self, path: pathlib.Path) -> None:
+        """Initialize the file reader."""
+        self.path = path
+        self.tokens = np.load(path)
+
+    def __iter__(self) -> Iterator[torch.Tensor]:
+        """Return the iterator."""
+        return iter([torch.from_numpy(self.tokens)])
+
+
 def read_preprocessed_corpus(
     token_path: pathlib.Path,
     config: DatasetConfig,
 ) -> Generator[tuple[torch.Tensor, torch.Tensor]]:
     """Read the preprocessed corpus."""
-    tokens_np = np.load(token_path)
-    tokens = torch.from_numpy(tokens_np)
-    while True:
-        for chunk in chunk_input(config, tokens):
-            yield chunk
+    reader = TokenizedFileReader(token_path)
+    chunked_ds = chunk_dataset(config, reader)
+    return cycle_dataset(chunked_ds)
