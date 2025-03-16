@@ -21,7 +21,7 @@ _LOGGER = logging.getLogger(__name__)
 _T = TypeVar("_T")
 _V = TypeVar("_V")
 
-PROCESS_CHUNK_SIZE = 16
+PROCESS_CHUNK_SIZE = 32
 
 
 class MapIterable(Iterable[_T]):
