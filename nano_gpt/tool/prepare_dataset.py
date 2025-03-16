@@ -28,7 +28,7 @@ import os
 import pathlib
 
 from nano_gpt.datasets.data_loader import preprocess_corpus
-from nano_gpt.tokenizer import get_tokenizer
+from nano_gpt.tokenizer import get_document_tokenizer
 
 from .model_config import DATASET_DIR, DATASETS, SPLITS
 
@@ -79,7 +79,7 @@ def run(args: argparse.Namespace) -> int:
     dataset_dir = pathlib.Path(args.dataset_dir)
     dataset_dir.mkdir(parents=True, exist_ok=True)
 
-    tokenizer = get_tokenizer()
+    tokenizer = get_document_tokenizer()
 
     dataset_fn = DATASETS[args.dataset]
     _LOGGER.info("Loading dataset %s", args.dataset)
