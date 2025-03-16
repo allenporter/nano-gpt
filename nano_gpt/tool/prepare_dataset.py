@@ -65,7 +65,7 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
     )
     default_cpu_count = 1
     if (cnt := os.cpu_count()) is not None:
-        default_cpu_count = max(default_cpu_count, cnt - 1)
+        default_cpu_count = max(default_cpu_count, cnt//2)
     args.add_argument(
         "--num-procs",
         type=int,
