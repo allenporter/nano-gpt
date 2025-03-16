@@ -27,19 +27,12 @@ import logging
 import os
 import pathlib
 
-from nano_gpt.datasets import tinyshakespeare, finewebedu
 from nano_gpt.datasets.data_loader import preprocess_corpus
 from nano_gpt.tokenizer import get_tokenizer
 
+from .model_config import DATASET_DIR, DATASETS, SPLITS
 
 _LOGGER = logging.getLogger(__name__)
-
-DATASET_DIR = "dataset_cache"
-DATASETS = {
-    "tinyshakespeare": tinyshakespeare.load_dataset,
-    "finewebedu": finewebedu.load_dataset,
-}
-SPLITS = {"train", "validation"}
 
 
 def create_arguments(args: argparse.ArgumentParser) -> None:

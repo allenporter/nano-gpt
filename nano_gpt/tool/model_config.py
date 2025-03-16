@@ -15,8 +15,16 @@ from nano_gpt.config import (
 from nano_gpt.model import GPT
 from nano_gpt.devices import get_device
 from nano_gpt.tokenizer import get_tokenizer, Tokenizer
+from nano_gpt.datasets import tinyshakespeare, finewebedu
 
 _LOGGER = logging.getLogger(__name__)
+
+DATASET_DIR = "dataset_cache"
+DATASETS = {
+    "tinyshakespeare": tinyshakespeare.load_dataset,
+    "finewebedu": finewebedu.load_dataset,
+}
+SPLITS = {"train", "validation"}
 
 
 def create_model_arguments(

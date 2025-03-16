@@ -7,9 +7,10 @@ import multiprocessing
 import pathlib
 from typing import TypeVar
 
-import torch
 import datasets
 import numpy as np
+import torch
+import tqdm
 
 from nano_gpt.tokenizer import Tokenizer
 from nano_gpt.config import DatasetConfig
@@ -205,7 +206,7 @@ def preprocess_corpus(
 
     with multiprocessing.Pool(num_procs) as pool:
         writer = ShardedTokenizedFileWriter(output_path, tokens_per_shard)
-        for tokens in pool.imap(enc.encode, text_ds, chunksize=PROCESS_CHUNK_SIZE):
+        for tokens in tqdm.tqdm(pool.imap(enc.encode, text_ds, chunksize=PROCESS_CHUNK_SIZE)):
             writer.append(torch.tensor(tokens))
     writer.write()
 
@@ -223,7 +224,9 @@ class TokenizedFileReader:
 
     def __iter__(self) -> Iterator[torch.Tensor]:
         """Return the iterator."""
-        return iter([torch.from_numpy(self._tokens)])
+        tokens_np = self._tokens.astype(np.int32)
+        tokens_tt = torch.tensor(tokens_np, dtype=torch.long)
+        return iter([tokens_tt])
 
 
 class ShardedTokenizedFileReader:

@@ -29,24 +29,18 @@ options:
 
 import argparse
 import logging
+import pathlib
 
 import torch
 
 from nano_gpt.devices import get_dtype
-from nano_gpt.datasets import tinyshakespeare, finewebedu
-from nano_gpt.datasets.data_loader import preprocess_dataset
+from nano_gpt.datasets.data_loader import read_preprocessed_corpus
 from nano_gpt.trainer import train
 
-from .model_config import create_model_arguments, model_from_args
+from .model_config import create_model_arguments, model_from_args, DATASET_DIR, DATASETS
 
 
 _LOGGER = logging.getLogger(__name__)
-
-
-DATASETS = {
-    "tinyshakespeare": tinyshakespeare.load_dataset,
-    "finewebedu": finewebedu.load_dataset,
-}
 
 
 def create_arguments(args: argparse.ArgumentParser) -> None:
@@ -58,6 +52,12 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         help="Use the specified dataset.",
         choices=DATASETS,
         required=True,
+    )
+    args.add_argument(
+        "--dataset-dir",
+        type=str,
+        help="Directory where the dataset is stored.",
+        default=DATASET_DIR,
     )
     args.add_argument(
         "--micro-batch-size",
@@ -79,6 +79,7 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         help="Stream the dataset without downloading the entire corpus.",
     )
 
+
 def run(args: argparse.Namespace) -> int:
     """Run the sample command."""
     torch.set_float32_matmul_precision("high")
@@ -87,19 +88,22 @@ def run(args: argparse.Namespace) -> int:
     if config is None:
         raise ValueError("No trainable model configuration found")
 
-    dataset_fn = DATASETS[args.dataset]
     _LOGGER.info("Loading dataset %s (streaming=%s)", args.dataset, args.streaming)
 
-    training_dataset = preprocess_dataset(
-        dataset_fn(split="train", streaming=args.streaming),
-        enc=tokenizer,
-        config=config.train_config.dataset_config,
+    dataset_dir = pathlib.Path(args.dataset_dir)
+    train_ds = read_preprocessed_corpus(
+        dataset_dir / f"{args.dataset}_train.npy", config.train_config.dataset_config
     )
+    # TODO: Add back eval to the trainer
+    # eval_ds = read_preprocessed_corpus(
+    #     dataset_dir / f"{args.dataset}_validation.npy",
+    #     config.train_config.dataset_config,
+    # )
     _LOGGER.info("Dataset loaded")
     train(
         model,
         args.device,
-        training_dataset,
+        train_ds,
         config.train_config,
         dtype=get_dtype(args.device),
     )
