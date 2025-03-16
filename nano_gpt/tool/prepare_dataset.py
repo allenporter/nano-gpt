@@ -96,7 +96,7 @@ def run(args: argparse.Namespace) -> int:
             tokenizer,
             output_path,
             num_procs=max(args.num_procs, 1),
-            tokens_per_shard=args.tokens_per_shard,
+            tokens_per_shard=int(args.tokens_per_shard),
         )
 
     return 0
