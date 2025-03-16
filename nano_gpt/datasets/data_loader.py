@@ -204,10 +204,12 @@ def preprocess_corpus(
     """Preprocess a huggingface dataset and write to an output file."""
     text_ds = MapIterable(lambda x: x["text"], ds)
 
+    pbar = tqdm.tqdm(total=tokens_per_shard)
     with multiprocessing.Pool(num_procs) as pool:
         writer = ShardedTokenizedFileWriter(output_path, tokens_per_shard)
-        for tokens in tqdm.tqdm(pool.imap(enc.encode, text_ds, chunksize=PROCESS_CHUNK_SIZE)):
+        for tokens in pool.imap(enc.encode, text_ds, chunksize=PROCESS_CHUNK_SIZE):
             writer.append(torch.tensor(tokens))
+            pbar.update(len(tokens))
     writer.write()
 
 
