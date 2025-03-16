@@ -34,10 +34,11 @@ import pathlib
 import torch
 
 from nano_gpt.devices import get_dtype
+from nano_gpt.datasets import TRAIN_DATASETS
 from nano_gpt.datasets.data_loader import read_preprocessed_corpus
 from nano_gpt.trainer import train
 
-from .model_config import create_model_arguments, model_from_args, DATASET_DIR, DATASETS
+from .model_config import create_model_arguments, model_from_args, DATASET_DIR
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,7 +51,7 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         "--dataset",
         type=str,
         help="Use the specified dataset.",
-        choices=DATASETS,
+        choices=TRAIN_DATASETS.keys(),
         required=True,
     )
     args.add_argument(
@@ -77,6 +78,12 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         action=argparse.BooleanOptionalAction,
         default=False,
         help="Stream the dataset without downloading the entire corpus.",
+    )
+    args.add_argument(
+        "--max-steps",
+        type=int,
+        default=None,
+        help="The maximum number of training steps.",
     )
 
 

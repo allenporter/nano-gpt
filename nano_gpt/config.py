@@ -4,6 +4,9 @@ import dataclasses
 from dataclasses import dataclass
 import enum
 import logging
+from typing import Protocol
+
+import datasets
 
 __all__ = [
     "GPTConfig",
@@ -13,6 +16,7 @@ __all__ = [
     "Models",
     "config_from",
     "model_config_from_pretrained",
+    "TrainDataset",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -85,10 +89,16 @@ class TrainConfig:
     min_lr_ratio: float = 0.1
     """Minimum learning rate ratio in terms of the max learning rate."""
 
-    warmup_steps: int = 10
+    # 2**19 tokens per step
+    # 10e9 - 10 billion tokens / 2**19 = 19073
+    # warmup over 375 million tokens from GPT2 papager.
+    # 375e6 / 2**19 = 715 steps
+    # The warmup is very mild and could be made more aggressive
+
+    warmup_steps: int = 715
     """Number of warmup steps before getting to the max learning rate."""
 
-    max_steps: int = 50
+    max_steps: int = 19073
     """Total number of training steps to perform."""
 
     def __post_init__(self) -> None:
@@ -208,6 +218,7 @@ def config_from(
     micro_batch_size: int | None = None,
     sequence_length: int | None = None,
     total_batch_size: int | None = None,
+    max_steps: int | None = None,
 ) -> TrainedModelConfig:
     """Return the configuration for the model."""
     if (config := MODELS.get(model_type)) is None:
@@ -221,6 +232,8 @@ def config_from(
         model_config_updates["block_size"] = sequence_length
     if total_batch_size is not None:
         train_config_updates["total_batch_size"] = total_batch_size
+    if max_steps is not None:
+        train_config_updates["max_steps"] = max_steps
     return TrainedModelConfig(
         model_name=config.model_name,
         model_config=dataclasses.replace(
@@ -240,3 +253,27 @@ def model_config_from_pretrained(model_type: str) -> GPTConfig:
         raise ValueError(f"Unknown model type: {model_type}")
     config = config_from(model_type)
     return config.model_config
+
+
+class LoadDataset(Protocol):
+    """A protocol for loading a dataset."""
+
+    def __call__(self, split: str, streaming: bool = False) -> datasets.Dataset:
+        """Load a dataset."""
+
+
+@dataclass
+class TrainDataset:
+    """A dataset."""
+
+    name: str
+    """The name of the dataset."""
+
+    load_fn: LoadDataset
+    """The function to load the dataset."""
+
+    total_tokens: int
+    """The total number of tokens in the dataset."""
+
+    tokens_per_shard: int
+    """The number of tokens per shard."""

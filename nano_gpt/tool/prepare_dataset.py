@@ -27,10 +27,11 @@ import logging
 import os
 import pathlib
 
-from nano_gpt.datasets.data_loader import preprocess_corpus
+from nano_gpt.datasets import TRAIN_DATASETS
+from nano_gpt.datasets.data_loader import preprocess_corpus, SPLITS
 from nano_gpt.tokenizer import get_document_tokenizer
 
-from .model_config import DATASET_DIR, DATASETS, SPLITS
+from .model_config import DATASET_DIR
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         "--dataset",
         type=str,
         help="Use the specified dataset.",
-        choices=DATASETS,
+        choices=TRAIN_DATASETS.keys(),
         required=True,
     )
     args.add_argument(
@@ -81,7 +82,7 @@ def run(args: argparse.Namespace) -> int:
 
     tokenizer = get_document_tokenizer()
 
-    dataset_fn = DATASETS[args.dataset]
+    dataset = TRAIN_DATASETS[args.dataset]
     _LOGGER.info("Loading dataset %s", args.dataset)
 
     splits = args.splits.split(",")
@@ -90,13 +91,13 @@ def run(args: argparse.Namespace) -> int:
             raise ValueError(f"Invalid split {split}, must be one of {SPLITS}")
         _LOGGER.info("Loading dataset %s for split %s", args.dataset, split)
         output_path = dataset_dir / f"{args.dataset}_{split}.npy"
-        ds = dataset_fn(split=split, streaming=False)
+        ds = dataset.load_fn(split=split, streaming=False)
         preprocess_corpus(
             ds,
             tokenizer,
             output_path,
             num_procs=max(args.num_procs, 1),
-            tokens_per_shard=int(args.tokens_per_shard),
+            tokens_per_shard=dataset.tokens_per_shard,
         )
 
     return 0

@@ -10,29 +10,42 @@ import logging
 
 import datasets
 
+from nano_gpt.config import TrainDataset
+
 
 _LOGGER = logging.getLogger(__name__)
 
 __all__ = [
+    "DATASET",
     "load_dataset",
 ]
 
-TOKEN_SIZE = 2**20
-SHARD_TOKEN_SIZE = int(1e8)  # 100M tokens
 
 # This dataset only has a train split so we create a validation split
 # by taking the last 10% of the training data.
-SPLITS = {
-    "train": "train[:90%]",
-    "validation": "train[90%:]",
+_SPLITS = {
+    "train": "train[:97%]",
+    "validation": "train[97%:]",
 }
 
 
 def load_dataset(split: str, streaming: bool = True) -> datasets.Dataset:
     """Load the dataset."""
+    if split not in _SPLITS:
+        raise ValueError(
+            f"Invalid split: {split}. Must be one of {list(_SPLITS.keys())}."
+        )
     return datasets.load_dataset(
         "HuggingFaceFW/fineweb-edu",
         name="sample-10BT",
         streaming=streaming,
-        split="train",
+        split=_SPLITS[split],
     )
+
+
+DATASET = TrainDataset(
+    name="finewebedu",
+    load_fn=load_dataset,
+    total_tokens=int(10e9),  # 10B tokens,
+    tokens_per_shard=int(100e6),  # 100M tokens
+)

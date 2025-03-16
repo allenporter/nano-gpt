@@ -3,6 +3,6 @@
 __all__ = [
     "sample",
     "eval",
-    "train",
     "prepare_dataset",
+    "train",
 ]

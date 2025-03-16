@@ -6,6 +6,7 @@ __all__ = [
     "config",
     "model",
     "datasets",
+    "tool",
     "tokenizer",
     "trainer",
     "devices",

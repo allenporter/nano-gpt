@@ -22,6 +22,7 @@ _T = TypeVar("_T")
 _V = TypeVar("_V")
 
 PROCESS_CHUNK_SIZE = 32
+SPLITS = {"train", "validation"}
 
 
 class MapIterable(Iterable[_T]):

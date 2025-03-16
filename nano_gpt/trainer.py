@@ -53,6 +53,7 @@ class TrainStats:
         t1 = time.time()
         dt = (t1 - self.t0) * 1000
         tok_per_sec = self.config.total_batch_size / (t1 - self.t0)
+        lr = get_lr(self.config, self.step)
         self.stats.update(
             {
                 "step": self.step,
@@ -60,6 +61,7 @@ class TrainStats:
                 "norm": f"{norm:0.4f}",
                 "dt": f"{dt:0.2f}ms",
                 "tok/sec": f"{tok_per_sec:0.2f}",
+                "lr": f"{lr:0.6f}",
             }
         )
         self.step += 1
