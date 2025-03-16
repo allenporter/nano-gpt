@@ -78,7 +78,8 @@ Status: Everything works, however the GPU is not fully saturated given the I/O
 - [x] Update `prepare_dataset` to pre-tokenize the dataset
 - [x] Determine output storage location
 - [x] Add support for training from pre-tokenized files
-- [ ] Add output write sharding
-- [ ] Add input read sharding
+- [x] Add output write sharding
+- [x] Add input read sharding
+- [ ] Tokenize files in prepare dataset
 - [ ] Update pre-tokenized `train` vs `validation` splits
 - [ ] Loading of pre-tokenized datasets by slit
