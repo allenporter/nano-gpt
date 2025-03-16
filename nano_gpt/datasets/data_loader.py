@@ -129,6 +129,30 @@ def preprocess_dataset(
     return cycle_dataset(chunked_ds)
 
 
+
+class TokenizedFileWriter:
+    """A file writer that writes tokenized files."""
+
+    def __init__(self, path: pathlib.Path) -> None:
+        """Initialize the file writer."""
+        self.path = path
+        self.tokens: list[torch.Tensor] = []
+
+    def append(self, tokens: torch.Tensor) -> None:
+        """Write the tokens to a file."""
+        self.tokens.append(tokens)
+
+    def extend(self, tokens: list[torch.Tensor]) -> None:
+        """Write the tokens to a file."""
+        self.tokens.extend(tokens)
+
+    def write(self) -> None:
+        """Save the tokens to a file."""
+        tokens = torch.concat(self.tokens)
+        tokens_np = np.asarray(tokens, dtype=np.uint32)
+        np.save(self.path, tokens_np)
+
+
 def preprocess_corpus(
     ds: datasets.Dataset,
     enc: Tokenizer,
@@ -138,9 +162,10 @@ def preprocess_corpus(
     """Preprocess a huggingface dataset and write to an output file."""
     text_ds = MapIterable(lambda x: x["text"], ds)
     tokenized_ds = tokenize_dataset(enc, text_ds)
-    tokens = torch.concat(list(tokenized_ds))
-    tokens_np = np.asarray(tokens, dtype=np.uint32)
-    np.save(output_path, tokens_np)
+    writer = TokenizedFileWriter(output_path)
+    for tokens in tokenized_ds:
+        writer.append(tokens)
+    writer.write()
 
 
 class TokenizedFileReader:
