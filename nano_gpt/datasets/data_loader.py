@@ -167,7 +167,7 @@ def preprocess_corpus(
 
     with multiprocessing.Pool(num_procs) as pool:
         writer = TokenizedFileWriter(output_path)
-        for tokens in pool.map(enc.encode, text_ds):  # , chunksize=PROCESS_CHUNK_SIZE):
+        for tokens in pool.imap(enc.encode, text_ds, chunksize=PROCESS_CHUNK_SIZE):
             writer.append(torch.tensor(tokens))
     writer.write()
 
