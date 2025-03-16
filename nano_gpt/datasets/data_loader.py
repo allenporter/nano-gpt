@@ -137,22 +137,59 @@ class TokenizedFileWriter:
 
     def __init__(self, path: pathlib.Path) -> None:
         """Initialize the file writer."""
-        self.path = path
-        self.tokens: list[torch.Tensor] = []
+        self._path = path
+        self._tokens: list[torch.Tensor] = []
+        self._num_tokens = 0
+
+    @property
+    def num_tokens(self) -> int:
+        """Return the number of tokens."""
+        return self._num_tokens
 
     def append(self, tokens: torch.Tensor) -> None:
         """Write the tokens to a file."""
-        self.tokens.append(tokens)
-
-    def extend(self, tokens: list[torch.Tensor]) -> None:
-        """Write the tokens to a file."""
-        self.tokens.extend(tokens)
+        self._tokens.append(tokens)
+        self._num_tokens += tokens.numel()
 
     def write(self) -> None:
         """Save the tokens to a file."""
-        tokens = torch.concat(self.tokens)
+        _LOGGER.debug("Writing %d tokens to %s", len(self._tokens), self._path)
+        tokens = torch.concat(self._tokens)
         tokens_np = np.asarray(tokens, dtype=np.uint32)
-        np.save(self.path, tokens_np)
+        np.save(self._path, tokens_np)
+
+
+class ShardedTokenizedFileWriter:
+    """A file writer that writes tokenized files."""
+
+    def __init__(self, path: pathlib.Path, tokens_per_shard: int) -> None:
+        """Initialize the file writer."""
+        self._path = path
+        self._shard = -1
+        self._tokens_per_shard = tokens_per_shard
+        self._open_new_writer()
+
+    def _open_new_writer(self) -> None:
+        """Open a new writer."""
+        self._shard += 1
+        shard_filepath = pathlib.Path(f"{self._path}.{self._shard:03d}")
+        _LOGGER.debug("Opening new writer for %s", shard_filepath)
+        self._writer = TokenizedFileWriter(shard_filepath)
+
+    def append(self, tokens: torch.Tensor) -> None:
+        """Write the tokens to a file."""
+        if self._writer.num_tokens + tokens.numel() > self._tokens_per_shard:
+            if self._writer.num_tokens == 0:
+                raise ValueError(
+                    f"Too large for shard size: {tokens.numel()} > {self._tokens_per_shard}"
+                )
+            self._writer.write()
+            self._open_new_writer()
+        self._writer.append(tokens)
+
+    def write(self) -> None:
+        """Save the tokens to a file."""
+        self._writer.write()
 
 
 def preprocess_corpus(
@@ -160,13 +197,14 @@ def preprocess_corpus(
     enc: Tokenizer,
     output_path: pathlib.Path,
     num_procs: int = 1,
+    tokens_per_shard: int = 1000000,
     text_column: str = "text",
 ) -> None:
     """Preprocess a huggingface dataset and write to an output file."""
     text_ds = MapIterable(lambda x: x["text"], ds)
 
     with multiprocessing.Pool(num_procs) as pool:
-        writer = TokenizedFileWriter(output_path)
+        writer = ShardedTokenizedFileWriter(output_path, tokens_per_shard)
         for tokens in pool.imap(enc.encode, text_ds, chunksize=PROCESS_CHUNK_SIZE):
             writer.append(torch.tensor(tokens))
     writer.write()
@@ -177,15 +215,15 @@ class TokenizedFileReader:
 
     def __init__(self, path: pathlib.Path) -> None:
         """Initialize the file reader."""
-        self.path = path
+        self._path = path
         if not path.exists():
             raise ValueError(f"File not found: {path}")
-        self.tokens = np.load(path)
-        _LOGGER.debug("Loaded %s with %d tokens", path, len(self.tokens))
+        self._tokens = np.load(path)
+        _LOGGER.debug("Loaded %s with %d tokens", path, len(self._tokens))
 
     def __iter__(self) -> Iterator[torch.Tensor]:
         """Return the iterator."""
-        return iter([torch.from_numpy(self.tokens)])
+        return iter([torch.from_numpy(self._tokens)])
 
 
 class ShardedTokenizedFileReader:
@@ -193,23 +231,23 @@ class ShardedTokenizedFileReader:
 
     def __init__(self, path: pathlib.Path) -> None:
         """Initialize the file reader."""
-        self.path = path
-        self.files = list(path.parent.glob(path.name))
-        _LOGGER.debug("Found %d files matching path: %s", len(self.files), path)
-        if len(self.files) == 0:
+        self._path = path
+        self._files = sorted(list(path.parent.glob(f"{path.name}.*")))
+        _LOGGER.debug("Found %d files matching path: %s", len(self._files), path)
+        if len(self._files) == 0:
             raise ValueError(f"No files found matching path: {path}")
-        self.idx = 0
 
     def __iter__(self) -> Iterator[torch.Tensor]:
         """Return the iterator."""
         _LOGGER.debug("Starting iteration over sharded files")
-        return iter(ShardedTokenizedFileReader(self.path)._iter())
+        return iter(ShardedTokenizedFileReader(self._path)._iter())
 
     def _iter(self) -> Iterator[torch.Tensor]:
         """Iterate through the sharded files."""
-        while self.idx < len(self.files):
-            yield from TokenizedFileReader(self.files[self.idx])
-            self.idx += 1
+        idx = 0
+        while idx < len(self._files):
+            yield from TokenizedFileReader(self._files[idx])
+            idx += 1
 
 
 def read_preprocessed_corpus(
