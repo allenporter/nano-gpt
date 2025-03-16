@@ -70,6 +70,15 @@ This will download the huggingface dataset into your `~/.cache` directory.
 $ nano-gpt prepare_dataset --dataset=finewebedu --splits=train,validation
 ```
 
+## Train
+
+This will train a new gpt2 125M parameter model using 0.5M step sizes
+(w/ gradient accumulation if needed) for 10B tokens.
+
+```bash
+nano-gpt train --dataset=finewebedu --device=cuda --sequence-length=1024 --micro-batch-size=16 
+```
+
 ## Work Plan
 
 Status: Everything works, however the GPU is not fully saturated given the I/O
@@ -82,4 +91,4 @@ Status: Everything works, however the GPU is not fully saturated given the I/O
 - [x] Add input read sharding
 - [x] Tokenize files in prepare dataset
 - [x] Update pre-tokenized `train` vs `validation` splits
-- [ ] Loading of pre-tokenized datasets by slit
+- [x] Loading of pre-tokenized datasets by slit
