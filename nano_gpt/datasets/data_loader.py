@@ -149,11 +149,38 @@ class TokenizedFileReader:
     def __init__(self, path: pathlib.Path) -> None:
         """Initialize the file reader."""
         self.path = path
+        if not path.exists():
+            raise ValueError(f"File not found: {path}")
         self.tokens = np.load(path)
+        _LOGGER.debug("Loaded %s with %d tokens", path, len(self.tokens))
 
     def __iter__(self) -> Iterator[torch.Tensor]:
         """Return the iterator."""
         return iter([torch.from_numpy(self.tokens)])
+
+
+class ShardedTokenizedFileReader:
+    """A file reader for a set of sharded files identified by a glob filename."""
+
+    def __init__(self, path: pathlib.Path) -> None:
+        """Initialize the file reader."""
+        self.path = path
+        self.files = list(path.parent.glob(path.name))
+        _LOGGER.debug("Found %d files matching path: %s", len(self.files), path)
+        if len(self.files) == 0:
+            raise ValueError(f"No files found matching path: {path}")
+        self.idx = 0
+
+    def __iter__(self) -> Iterator[torch.Tensor]:
+        """Return the iterator."""
+        _LOGGER.debug("Starting iteration over sharded files")
+        return iter(ShardedTokenizedFileReader(self.path)._iter())
+
+    def _iter(self) -> Iterator[torch.Tensor]:
+        """Iterate through the sharded files."""
+        while self.idx < len(self.files):
+            yield from TokenizedFileReader(self.files[self.idx])
+            self.idx += 1
 
 
 def read_preprocessed_corpus(
@@ -161,6 +188,6 @@ def read_preprocessed_corpus(
     config: DatasetConfig,
 ) -> Generator[tuple[torch.Tensor, torch.Tensor]]:
     """Read the preprocessed corpus."""
-    reader = TokenizedFileReader(token_path)
+    reader = ShardedTokenizedFileReader(token_path)
     chunked_ds = chunk_dataset(config, reader)
     return cycle_dataset(chunked_ds)
