@@ -133,13 +133,29 @@ def preprocess_dataset(
     return cycle_dataset(chunked_ds)
 
 
+class NumpyTokenizer:
+    """Generate numpy arrays of tokenized data."""
+
+    def __init__(self, enc: Tokenizer) -> None:
+        """Initialize the tokenizer."""
+        self._enc = enc
+
+    def encode(self, text: str) -> np.ndarray:
+        """Encode the text."""
+        tokens = self._enc.encode(text)
+        tokens_np = np.array(tokens)
+        if not (0 <= tokens_np).all() and (tokens_np < 2**16).all():
+            raise ValueError("token dictionary too large for uint16")
+        return tokens_np.astype(np.uint16)
+
+
 class TokenizedFileWriter:
     """A file writer that writes tokenized files."""
 
-    def __init__(self, path: pathlib.Path) -> None:
+    def __init__(self, path: pathlib.Path, max_tokens: int) -> None:
         """Initialize the file writer."""
         self._path = path
-        self._tokens: list[torch.Tensor] = []
+        self._tokens = np.empty((max_tokens,), dtype=np.uint16)
         self._num_tokens = 0
 
     @property
@@ -147,16 +163,15 @@ class TokenizedFileWriter:
         """Return the number of tokens."""
         return self._num_tokens
 
-    def append(self, tokens: torch.Tensor) -> None:
+    def append(self, tokens: np.ndarray) -> None:
         """Write the tokens to a file."""
-        self._tokens.append(tokens)
-        self._num_tokens += tokens.numel()
+        self._tokens[self._num_tokens : self._num_tokens + len(tokens)] = tokens
+        self._num_tokens += len(tokens)
 
     def write(self) -> None:
         """Save the tokens to a file."""
         _LOGGER.debug("Writing %d tokens to %s", len(self._tokens), self._path)
-        tokens = torch.concat(self._tokens)
-        tokens_np = np.asarray(tokens, dtype=np.uint32)
+        tokens_np = self._tokens[: self.num_tokens]
         np.save(self._path, tokens_np)
 
 
@@ -175,24 +190,23 @@ class ShardedTokenizedFileWriter:
         self._shard += 1
         shard_filepath = pathlib.Path(f"{self._path}.{self._shard:03d}")
         _LOGGER.debug("Opening new writer for %s", shard_filepath)
-        self._writer = TokenizedFileWriter(shard_filepath)
+        self._writer = TokenizedFileWriter(shard_filepath, self._tokens_per_shard)
         self._pbar = tqdm.tqdm(
             desc=f"Shard {self._shard}",
             total=self._tokens_per_shard,
         )
 
-
-    def append(self, tokens: torch.Tensor) -> None:
+    def append(self, tokens: np.ndarray) -> None:
         """Write the tokens to a file."""
-        if self._writer.num_tokens + tokens.numel() > self._tokens_per_shard:
+        if self._writer.num_tokens + len(tokens) > self._tokens_per_shard:
             if self._writer.num_tokens == 0:
                 raise ValueError(
-                    f"Too large for shard size: {tokens.numel()} > {self._tokens_per_shard}"
+                    f"Too large for shard size: {len(tokens)} > {self._tokens_per_shard}"
                 )
             self._writer.write()
             self._open_new_writer()
         self._writer.append(tokens)
-        self._pbar.update(tokens.numel())
+        self._pbar.update(len(tokens))
 
     def write(self) -> None:
         """Save the tokens to a file."""
@@ -209,11 +223,13 @@ def preprocess_corpus(
 ) -> None:
     """Preprocess a huggingface dataset and write to an output file."""
     text_ds = MapIterable(lambda x: x["text"], ds)
-
+    tokeniezr = NumpyTokenizer(enc)
     with multiprocessing.Pool(num_procs) as pool:
         writer = ShardedTokenizedFileWriter(output_path, tokens_per_shard)
-        for tokens in pool.imap(enc.encode, text_ds, chunksize=PROCESS_CHUNK_SIZE):
-            writer.append(torch.tensor(tokens))
+        for tokens in pool.imap(
+            tokeniezr.encode, text_ds, chunksize=PROCESS_CHUNK_SIZE
+        ):
+            writer.append(tokens)
     writer.write()
 
 

@@ -7,6 +7,7 @@ import tempfile
 
 import pytest
 import datasets
+import numpy as np
 
 from nano_gpt.datasets.data_loader import (
     chunk_dataset,
@@ -147,7 +148,7 @@ def test_sharded_file_writer(
         tmpdir / "test", tokens_per_shard=tokens_per_shard
     )
     for i in range(total_items):
-        toks = torch.tensor([i] * tokens_per_item)
+        toks = np.array([i] * tokens_per_item)
         writer.append(toks)
     writer.write()
 

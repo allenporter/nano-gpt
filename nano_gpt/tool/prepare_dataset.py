@@ -62,11 +62,14 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         help="Directory to store the dataset.",
         default=DATASET_DIR,
     )
+    default_cpu_count = 1
+    if (cnt := os.cpu_count()) is not None:
+        default_cpu_count = max(default_cpu_count, cnt - 1)
     args.add_argument(
         "--num-procs",
         type=int,
         help="Number of processes to use for preprocessing.",
-        default=os.cpu_count() - 1 if os.cpu_count() > 1 else 1,
+        default=default_cpu_count,
     )
 
 
