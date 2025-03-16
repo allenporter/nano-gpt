@@ -66,7 +66,7 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         "--num-procs",
         type=int,
         help="Number of processes to use for preprocessing.",
-        default=(os.cpu_count() or 1) // 2,
+        default=os.cpu_count() - 1 if os.cpu_count() > 1 else 1,
     )
 
 
@@ -92,7 +92,7 @@ def run(args: argparse.Namespace) -> int:
             ds,
             tokenizer,
             output_path,
-            num_procs=args.num_procs or 1,
+            num_procs=max(args.num_procs, 1),
             tokens_per_shard=args.tokens_per_shard,
         )
 
