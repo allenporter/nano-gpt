@@ -176,6 +176,11 @@ class ShardedTokenizedFileWriter:
         shard_filepath = pathlib.Path(f"{self._path}.{self._shard:03d}")
         _LOGGER.debug("Opening new writer for %s", shard_filepath)
         self._writer = TokenizedFileWriter(shard_filepath)
+        self._pbar = tqdm.tqdm(
+            desc=f"Shard {self._shard}",
+            total=self._tokens_per_shard,
+        )
+
 
     def append(self, tokens: torch.Tensor) -> None:
         """Write the tokens to a file."""
@@ -187,6 +192,7 @@ class ShardedTokenizedFileWriter:
             self._writer.write()
             self._open_new_writer()
         self._writer.append(tokens)
+        self._pbar.update(tokens.numel())
 
     def write(self) -> None:
         """Save the tokens to a file."""
@@ -204,12 +210,10 @@ def preprocess_corpus(
     """Preprocess a huggingface dataset and write to an output file."""
     text_ds = MapIterable(lambda x: x["text"], ds)
 
-    pbar = tqdm.tqdm(total=tokens_per_shard)
     with multiprocessing.Pool(num_procs) as pool:
         writer = ShardedTokenizedFileWriter(output_path, tokens_per_shard)
         for tokens in pool.imap(enc.encode, text_ds, chunksize=PROCESS_CHUNK_SIZE):
             writer.append(torch.tensor(tokens))
-            pbar.update(len(tokens))
     writer.write()
 
 

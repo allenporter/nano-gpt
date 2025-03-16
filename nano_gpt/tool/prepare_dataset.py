@@ -54,7 +54,7 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         "--tokens-per-shard",
         type=int,
         help="Number of tokens per shard.",
-        default=10e6,  # 10 million tokens
+        default=10e8,  # 100 million tokens/shard
     )
     args.add_argument(
         "--dataset-dir",
