@@ -89,7 +89,7 @@ def test_preprocess_corpus(fake_tokenizer: Tokenizer, tmpdir: pathlib.Path) -> N
 
     tmp_path = pathlib.Path(tmpdir) / "finewebedu.npy"
     preprocess_corpus(
-        datasets.Dataset.from_dict({"text": ["this is test data"]}),
+        datasets.Dataset.from_dict({"text": ["this is test data", "record 2"]}),
         fake_tokenizer,
         tmp_path,
         num_procs=2,
@@ -99,7 +99,7 @@ def test_preprocess_corpus(fake_tokenizer: Tokenizer, tmpdir: pathlib.Path) -> N
         tmp_path,
         DatasetConfig(micro_batch_size=2, sequence_length=2),
     )
-    limited_iter = itertools.islice(ds, 10)
+    limited_iter = itertools.islice(ds, 14)
 
     pairs = [
         ([fake_tokenizer.decode(x) for x in xs], [fake_tokenizer.decode(y) for y in ys])
@@ -109,11 +109,15 @@ def test_preprocess_corpus(fake_tokenizer: Tokenizer, tmpdir: pathlib.Path) -> N
         (["th", "is"], ["hi", "s "]),
         ([" i", "s "], ["is", " t"]),
         (["te", "st"], ["es", "t "]),  # codespell:ignore
+        ([" d", "at"], ["da", "ta"]),
+        (["ar", "ec"], ["re", "co"]),
         (["th", "is"], ["hi", "s "]),
         ([" i", "s "], ["is", " t"]),
         (["te", "st"], ["es", "t "]),  # codespell:ignore
+        ([" d", "at"], ["da", "ta"]),
+        (["ar", "ec"], ["re", "co"]),
         (["th", "is"], ["hi", "s "]),
         ([" i", "s "], ["is", " t"]),
         (["te", "st"], ["es", "t "]),  # codespell:ignore
-        (["th", "is"], ["hi", "s "]),
+        ([" d", "at"], ["da", "ta"]),
     ]
