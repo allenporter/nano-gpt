@@ -1,24 +1,59 @@
 # nano-gpt
 
-This repo is for following along in Andrej Karpathy's [series](https://www.youtube.com/playlist?list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ) on ML for the section on gpt-2. This is
-not meant to be unique for the community, more just for capturing my own
-work environment.
+This repo is an implementation of Andrej Karpathy's [GPT tutorial series](https://www.youtube.com/playlist?list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ), packaged as a Python library. The core architecture and training approach follows Karpathy's excellent educational content, with some additional packaging and infrastructure work to make it more maintainable and reusable.
 
 ## Goals
 
-Some specific goals for this project:
+This project takes Karpathy's tutorial code and adds some additional infrastructure to make it more maintainable and testable:
 
-- Pull out into a separate project from https://github.com/allenporter/karpathy-guides which is my colab environmnt for the other tutorials. The code is starting to get bigger than a single colab.
-- Add additional documentation that is useful for my own reference
-- Make routines for working on hardware I have available (mps, old GPUs, colab, etc)
-- Additional type checking for safety/documentation
-- Basic unit tests to ensure things continue working
-- Add a little more abstraction, as a style preference, to facilitate typing and testing
-- Allow experimenting on other python frameworks other than pytorch
+- Package the implementation as a proper Python library with CLI tools
+- Add type hints and documentation for better code clarity
+- Include unit tests to ensure reliability
+- Support various hardware configurations (MPS, older GPUs, Colab, etc)
+- Implement efficient data loading and preprocessing for larger datasets
+- Maintain the educational value while making it a little easier to use.
 
-This project is managed with [scruft](https://github.com/allenporter/scruft)
+The core GPT-2 implementation and training methodology remains true to Karpathy's original work.
 
-## Environment
+## Architecture
+
+This project implements a GPT-2 style transformer model, following Karpathy's tutorial. This
+section contains a high level overview of the key components and any additions.
+
+### Model Architecture
+- Implements the standard GPT-2 architecture with transformer blocks containing:
+  - Multi-head causal self-attention
+  - Layer normalization
+  - MLP blocks with GELU activation
+- Configurable model sizes matching OpenAI's GPT-2 variants (from S 124M to XL 1.5B) and even smaller XSS variants for testing.
+- Shared input/output embeddings for parameter efficiency
+- Support for loading pretrained GPT-2 weights from HuggingFace
+
+### Training Pipeline
+- Efficient data loading with preprocessing and sharding:
+  - Pre-tokenizes datasets using tiktoken (GPT-2 tokenizer)
+  - Shards large datasets into manageable chunks
+  - Supports streaming for large datasets
+  - Implements gradient accumulation for effective larger batch sizes
+- Learning rate scheduling with warmup
+- Gradient clipping for stable training
+- Support for different compute devices (CUDA, MPS, CPU)
+- Model compilation for improved performance where available
+
+### Datasets
+- Built-in support for:
+  - TinyShakespeare (for testing and quick experiments)
+  - FineWebEdu (10B token educational dataset)
+  - HellaSwag (for model evaluation)
+- Extensible dataset loading system using HuggingFace datasets
+
+### Evaluation & Inference
+- Text generation with configurable parameters
+- Model evaluation on benchmark datasets
+- Support for different sampling strategies
+
+
+## Environment Setup
 
 Install pre-requisites
 
@@ -79,16 +114,6 @@ This will train a new gpt2 125M parameter model using 0.5M step sizes
 nano-gpt train --dataset=finewebedu --device=cuda --sequence-length=1024 --micro-batch-size=16 
 ```
 
-## Work Plan
+## Additional details
 
-Status: Everything works, however the GPU is not fully saturated given the I/O
-  is not isolated out of the training loop.
-
-- [x] Update `prepare_dataset` to pre-tokenize the dataset
-- [x] Determine output storage location
-- [x] Add support for training from pre-tokenized files
-- [x] Add output write sharding
-- [x] Add input read sharding
-- [x] Tokenize files in prepare dataset
-- [x] Update pre-tokenized `train` vs `validation` splits
-- [x] Loading of pre-tokenized datasets by slit
+This project is managed with [scruft](https://github.com/allenporter/scruft)
