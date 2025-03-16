@@ -33,7 +33,7 @@ $ uv pip install -r requirements_dev.txt
 This example will download the pretrained gpt2 and sample from it with the given prefix:
 
 ```bash
-$ nano-gpt sample --pretrained=gpt2 --seed=42 --max-length=30 "Hello, I'm a language model," 
+$ nano-gpt sample --pretrained=gpt2 --seed=42 --max-length=30 "Hello, I'm a language model,"
 > Hello, I'm a language model, which means I'm familiar with it, but I'm not fluent in that. Well, with that said,
 > Hello, I'm a language model, and the syntax, to make use of it, is pretty good. So why do you have that and not
 > Hello, I'm a language model, I'm doing this work in Python, and then I'm writing code for Haskell.
@@ -48,7 +48,7 @@ So we can
 This example will evaluate hellaswag against the pretrained gpt2:
 
 ```bash
-$ nano-gpt eval --pretrained=gpt2       
+$ nano-gpt eval --pretrained=gpt2
 Accuracy: 0/1 = 0.0000
 Accuracy: 0/2 = 0.0000
 Accuracy: 1/3 = 0.3333
@@ -80,6 +80,6 @@ Status: Everything works, however the GPU is not fully saturated given the I/O
 - [x] Add support for training from pre-tokenized files
 - [x] Add output write sharding
 - [x] Add input read sharding
-- [ ] Tokenize files in prepare dataset
-- [ ] Update pre-tokenized `train` vs `validation` splits
+- [x] Tokenize files in prepare dataset
+- [x] Update pre-tokenized `train` vs `validation` splits
 - [ ] Loading of pre-tokenized datasets by slit

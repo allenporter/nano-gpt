@@ -7,11 +7,9 @@ See https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu
 """
 
 import logging
-from collections.abc import Iterable
 
 import datasets
 
-from .data_loader import MapIterable
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,12 +28,11 @@ SPLITS = {
 }
 
 
-def load_dataset(split: str, streaming: bool = True) -> Iterable[str]:
+def load_dataset(split: str, streaming: bool = True) -> datasets.Dataset:
     """Load the dataset."""
-    ds = datasets.load_dataset(
+    return datasets.load_dataset(
         "HuggingFaceFW/fineweb-edu",
         name="sample-10BT",
         streaming=streaming,
         split="train",
     )
-    return MapIterable(lambda x: x["text"], ds)

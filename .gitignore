@@ -146,3 +146,6 @@ venv.bak/
 dmypy.json
 
 .DS_Store
+
+# Cache files
+dataset_cache
