@@ -92,6 +92,7 @@ def test_preprocess_corpus(fake_tokenizer: Tokenizer, tmpdir: pathlib.Path) -> N
         datasets.Dataset.from_dict({"text": ["this is test data"]}),
         fake_tokenizer,
         tmp_path,
+        num_procs=2,
     )
     assert len(list(tmpdir.glob("*.npy"))) == 1
     ds = read_preprocessed_corpus(

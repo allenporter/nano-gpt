@@ -3,6 +3,7 @@
 import itertools
 from collections.abc import Iterable, Generator, Callable, Iterator
 import logging
+import multiprocessing
 import pathlib
 from typing import TypeVar
 
@@ -18,6 +19,8 @@ __all__ = ["preprocess_dataset"]
 _LOGGER = logging.getLogger(__name__)
 _T = TypeVar("_T")
 _V = TypeVar("_V")
+
+PROCESS_CHUNK_SIZE = 16
 
 
 class MapIterable(Iterable[_T]):
@@ -129,7 +132,6 @@ def preprocess_dataset(
     return cycle_dataset(chunked_ds)
 
 
-
 class TokenizedFileWriter:
     """A file writer that writes tokenized files."""
 
@@ -157,14 +159,16 @@ def preprocess_corpus(
     ds: datasets.Dataset,
     enc: Tokenizer,
     output_path: pathlib.Path,
+    num_procs: int = 1,
     text_column: str = "text",
 ) -> None:
     """Preprocess a huggingface dataset and write to an output file."""
     text_ds = MapIterable(lambda x: x["text"], ds)
-    tokenized_ds = tokenize_dataset(enc, text_ds)
-    writer = TokenizedFileWriter(output_path)
-    for tokens in tokenized_ds:
-        writer.append(tokens)
+
+    with multiprocessing.Pool(num_procs) as pool:
+        writer = TokenizedFileWriter(output_path)
+        for tokens in pool.map(enc.encode, text_ds):  # , chunksize=PROCESS_CHUNK_SIZE):
+            writer.append(torch.tensor(tokens))
     writer.write()
 
 
