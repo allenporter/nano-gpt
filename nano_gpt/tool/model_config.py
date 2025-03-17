@@ -116,7 +116,7 @@ def model_from_args(args: Any) -> tuple[GPT, Tokenizer, TrainedModelConfig | Non
     model.to(args.device)
     if args.device == "cuda":
         if args.compile:
-            _LOGGER.debug("Compiling model")
+            _LOGGER.info("Compiling model")
             model = cast(GPT, torch.compile(model))
         else:
             _LOGGER.debug("Not compiling model")
