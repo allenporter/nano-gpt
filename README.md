@@ -63,6 +63,28 @@ $ source .venv/bin/activate
 $ uv pip install -r requirements_dev.txt
 ```
 
+When using a jetson orin with the pytorch container `dustynv/pytorch:2.1-r36.2.0`
+you can setup with these commands:
+
+```bash
+$ apt install python3.10-venv
+$ python3.10 -m venv venv
+$ source venv/bin/activate
+$ pip install -r requirements_dev.txt
+$ pip install "numpy<2"
+$ pip install /opt/torch-2.1.0-cp310-cp310-linux_aarch64.whl
+```
+That will take about 8 days to train, by the way.
+
+
+Verify that you have the accelerator you expect:
+```
+$ python3
+>>> import torch
+>>> torch.cuda.is_available()
+True
+```
+
 ## Sample
 
 This example will download the pretrained gpt2 and sample from it with the given prefix:
@@ -117,3 +139,16 @@ nano-gpt train --dataset=finewebedu --device=cuda --sequence-length=1024 --micro
 ## Additional details
 
 This project is managed with [scruft](https://github.com/allenporter/scruft)
+
+
+## Work Plan
+
+Additional features to add:
+- [ ] hellaswag every N runs of training
+- [ ] support checkpointing model
+- [ ] log performance stats to disk
+- [ ] ability to reset validation or not cycle
+- [ ] validation set in eval command
+- [ ] validation set in train command
+- [ ] plot baseline of gpt2
+- [ ] plot results from performance log
