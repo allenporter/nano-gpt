@@ -27,5 +27,5 @@ def test_train_stats() -> None:
     assert stats.step == 1
     assert (
         str(stats)
-        == "step: 0 | loss: 1.0000 | norm: 1.0000 | dt: 100.00ms | tok/sec: 5242885.00"
+        == "step: 0 | loss: 1.0000 | norm: 1.0000 | dt: 100.00ms | tok/sec: 5242885.00 | lr: 0.000001"
     )

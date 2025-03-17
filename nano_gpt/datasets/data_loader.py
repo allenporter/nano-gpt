@@ -156,7 +156,7 @@ class TokenizedFileWriter:
     def __init__(self, path: pathlib.Path, max_tokens: int) -> None:
         """Initialize the file writer."""
         self._path = path
-        self._tokens = np.empty((max_tokens,), dtype=np.uint16)
+        self._tokens: np.ndarray = np.empty((max_tokens,), dtype=np.uint16)
         self._num_tokens = 0
 
     @property
@@ -174,6 +174,7 @@ class TokenizedFileWriter:
         _LOGGER.debug("Writing %d tokens to %s", len(self._tokens), self._path)
         tokens_np = self._tokens[: self.num_tokens]
         np.save(self._path, tokens_np)
+        self._tokens = np.zeros(1, dtype=np.uint16)
 
 
 class ShardedTokenizedFileWriter:
@@ -191,7 +192,9 @@ class ShardedTokenizedFileWriter:
         self._shard += 1
         shard_filepath = pathlib.Path(f"{self._path}.{self._shard:03d}")
         _LOGGER.debug("Opening new writer for %s", shard_filepath)
-        self._writer = TokenizedFileWriter(shard_filepath, self._tokens_per_shard)
+        self._writer: TokenizedFileWriter | None = TokenizedFileWriter(
+            shard_filepath, self._tokens_per_shard
+        )
         self._pbar = tqdm.tqdm(
             desc=f"Shard {self._shard}",
             total=self._tokens_per_shard,
@@ -199,6 +202,8 @@ class ShardedTokenizedFileWriter:
 
     def append(self, tokens: np.ndarray) -> None:
         """Write the tokens to a file."""
+        if self._writer is None:
+            raise ValueError("Writer is not initialized")
         if self._writer.num_tokens + len(tokens) > self._tokens_per_shard:
             if self._writer.num_tokens == 0:
                 raise ValueError(
@@ -211,7 +216,10 @@ class ShardedTokenizedFileWriter:
 
     def write(self) -> None:
         """Save the tokens to a file."""
+        if self._writer is None:
+            raise ValueError("Writer is not initialized")
         self._writer.write()
+        self._writer = None
 
 
 def preprocess_corpus(
@@ -224,11 +232,11 @@ def preprocess_corpus(
 ) -> None:
     """Preprocess a huggingface dataset and write to an output file."""
     text_ds = MapIterable(lambda x: x["text"], ds)
-    tokeniezr = NumpyTokenizer(enc)
+    writer = ShardedTokenizedFileWriter(output_path, tokens_per_shard)
+    tokenizer = NumpyTokenizer(enc)
     with multiprocessing.Pool(num_procs) as pool:
-        writer = ShardedTokenizedFileWriter(output_path, tokens_per_shard)
         for tokens in pool.imap(
-            tokeniezr.encode, text_ds, chunksize=PROCESS_CHUNK_SIZE
+            tokenizer.encode, text_ds, chunksize=PROCESS_CHUNK_SIZE
         ):
             writer.append(tokens)
     writer.write()
