@@ -70,23 +70,27 @@ def tokenize_dataset(
 def chunk_input(
     config: DatasetConfig,
     tokens: torch.Tensor,
+    worker_num: int = 0,
+    worker_count: int = 1,
 ) -> list[tuple[torch.Tensor, torch.Tensor]]:
     """Chunk the input into batches."""
     B, T = config.micro_batch_size, config.sequence_length
-    pos = 0
+    pos = config.chunk_token_size * worker_num
     results: list[tuple[torch.Tensor, torch.Tensor]] = []
-    while (pos + config.chunk_token_size + 1) < len(tokens):
-        buf = tokens[pos : pos + config.chunk_token_size + 1]
+    while (pos + config.chunk_token_size * worker_count + 1) < len(tokens):
+        buf = tokens[pos : pos + config.chunk_token_size * worker_count + 1]
         x = buf[:-1].view(B, T)
         y = buf[1:].view(B, T)
         results.append((x, y))
-        pos += config.chunk_token_size
+        pos += config.chunk_token_size * worker_count
     return results
 
 
 def chunk_dataset(
     config: DatasetConfig,
     ds: Iterable[torch.Tensor],
+    worker_num: int = 0,
+    worker_count: int = 1,
 ) -> Iterable[tuple[torch.Tensor, torch.Tensor]]:
     """Chunk the dataset into batches of example inputs and labels based.
 
@@ -99,7 +103,7 @@ def chunk_dataset(
         tokens: torch.Tensor,
     ) -> list[tuple[torch.Tensor, torch.Tensor]]:
         """Chunk the input into batches."""
-        return chunk_input(config, tokens)
+        return chunk_input(config, tokens, worker_num, worker_count)
 
     chunked = MapIterable(
         _chunk_input,
@@ -287,8 +291,14 @@ class ShardedTokenizedFileReader:
 def read_preprocessed_corpus(
     token_path: pathlib.Path,
     config: DatasetConfig,
+    worker_num: int = 0,
+    worker_count: int = 1,
 ) -> Generator[tuple[torch.Tensor, torch.Tensor]]:
-    """Read the preprocessed corpus."""
+    """Read the preprocessed corpus.
+    
+    If worker_num and worker_count are provided, it will read only the
+    specified worker's portion of the data.
+    """
     reader = ShardedTokenizedFileReader(token_path)
-    chunked_ds = chunk_dataset(config, reader)
+    chunked_ds = chunk_dataset(config, reader, worker_num, worker_count)
     return cycle_dataset(chunked_ds)
