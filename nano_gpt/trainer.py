@@ -1,13 +1,15 @@
 """Trainer for nano-gpt."""
 
-import time
-from dataclasses import dataclass
-import math
-import logging
-from typing import Any
 from collections.abc import Iterator
+from dataclasses import dataclass
+import logging
+import math
+import os
+import time
+from typing import Any
 
 import torch
+from torch.distributed import init_process_group
 
 from .model import GPT
 from .config import TrainConfig
@@ -69,6 +71,35 @@ class TrainStats:
     def __str__(self) -> str:
         """String representation."""
         return " | ".join(f"{key}: {value}" for key, value in self.stats.items())
+
+
+class WorkerState:
+    """State for multi-processing using Distributed Data Parallel."""
+
+    def __init__(self, device: str) -> None:
+        """Initialize the state."""
+        # set up DDP (distributed data parallel).
+        # torchrun command sets the env variables RANK, LOCAL_RANK, and WORLD_SIZE
+        self.ddp = int(os.environ.get("RANK", -1)) != -1  # is this a ddp run?
+        if self.ddp:
+            if device != "cuda":
+                raise ValueError("DDP requested but requested device is not cuda")
+            init_process_group(backend="nccl")
+            self.ddp_rank = int(os.environ["RANK"])
+            self.ddp_local_rank = int(os.environ["LOCAL_RANK"])
+            self.ddp_world_size = int(os.environ["WORLD_SIZE"])
+            self.device = f"cuda:{self.ddp_local_rank}"
+            self.master_process = (
+                self.ddp_rank == 0
+            )  # this process will do logging, checkpointing etc.
+        else:
+            # vanilla, non-DDP run
+            self.ddp_rank = 0
+            self.ddp_local_rank = 0
+            self.ddp_world_size = 1
+            self.master_process = True
+            # attempt to autodetect device
+            self.device = device
 
 
 def train(

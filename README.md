@@ -133,7 +133,7 @@ This will train a new gpt2 125M parameter model using 0.5M step sizes
 (w/ gradient accumulation if needed) for 10B tokens.
 
 ```bash
-nano-gpt train --dataset=finewebedu --device=cuda --sequence-length=1024 --micro-batch-size=16 
+nano-gpt train --dataset=finewebedu --device=cuda --sequence-length=1024 --micro-batch-size=16
 ```
 
 ## Additional details
@@ -144,6 +144,8 @@ This project is managed with [scruft](https://github.com/allenporter/scruft)
 ## Work Plan
 
 Additional features to add:
+- [ ] Add DDP in train loop
+- [ ] Make dataset chunk coding respect rank
 - [ ] hellaswag every N runs of training
 - [ ] support checkpointing model
 - [ ] log performance stats to disk
