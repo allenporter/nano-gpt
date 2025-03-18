@@ -42,7 +42,7 @@ def test_tokenize_dataset(fake_tokenizer: Tokenizer) -> None:
 def test_chunk_dataset(fake_tokenizer: Tokenizer) -> None:
     """Test chunk_dataset."""
     config = DatasetConfig(micro_batch_size=2, sequence_length=2)
-    tokens = fake_tokenizer.encode("this is test data")
+    tokens = fake_tokenizer.encode("this is test data!")
     t = torch.tensor(tokens)
     chunks_iter = chunk_dataset(config, [t])
     pairs = [
@@ -53,7 +53,50 @@ def test_chunk_dataset(fake_tokenizer: Tokenizer) -> None:
         (["th", "is"], ["hi", "s "]),
         ([" i", "s "], ["is", " t"]),
         (["te", "st"], ["es", "t "]),  # codespell:ignore
+        ([" d", "at"], ["da", "ta"]),
     ]
+
+
+def test_chunk_dataset_worker_split(fake_tokenizer: Tokenizer) -> None:
+    """Test chunk_dataset split by workers."""
+    config = DatasetConfig(micro_batch_size=4, sequence_length=10)
+    assert config.chunk_token_size == 40
+    t = torch.tensor(
+        [1] * 40
+        + [2] * 40
+        + [3] * 40
+        + [4] * 40
+        + [5] * 40
+        + [6] * 40
+        + [7] * 40
+        + [8] * 40
+        + [9] * 40
+        + [10] * 40,
+    )
+    # 3 workers chunk up the dataset
+    pairs1 = list(chunk_dataset(config, [t], worker_num=0, worker_count=3))
+    pairs2 = list(chunk_dataset(config, [t], worker_num=1, worker_count=3))
+    pairs3 = list(chunk_dataset(config, [t], worker_num=2, worker_count=3))
+    # Drop the y values
+    x1 = [pair[0] for pair in pairs1]
+    x2 = [pair[0] for pair in pairs2]
+    x3 = [pair[0] for pair in pairs3]
+    # Flatten the output and verify the results
+    assert len(x1) == 3
+    assert x1[0].shape == (4, 10)
+    assert (x1[0].numpy() == np.array([[1] * 10] * 4)).all()
+    assert (x1[1].numpy() == np.array([[4] * 10] * 4)).all()
+    assert (x1[2].numpy() == np.array([[7] * 10] * 4)).all()
+    assert len(x2) == 3
+    assert x2[0].shape == (4, 10)
+    assert (x2[0].numpy() == np.array([[2] * 10] * 4)).all()
+    assert (x2[1].numpy() == np.array([[5] * 10] * 4)).all()
+    assert (x2[2].numpy() == np.array([[8] * 10] * 4)).all()
+    assert len(x3) == 3
+    assert x3[0].shape == (4, 10)
+    assert (x3[0].numpy() == np.array([[3] * 10] * 4)).all()
+    assert (x3[1].numpy() == np.array([[6] * 10] * 4)).all()
+    assert (x3[2].numpy() == np.array([[9] * 10] * 4)).all()
 
 
 def test_cycle_dataset(fake_tokenizer: Tokenizer) -> None:
@@ -113,15 +156,15 @@ def test_preprocess_corpus(fake_tokenizer: Tokenizer, tmpdir: pathlib.Path) -> N
         (["te", "st"], ["es", "t "]),  # codespell:ignore
         ([" d", "at"], ["da", "ta"]),
         (["ar", "ec"], ["re", "co"]),
+        (["or", "d "], ["rd", " 2"]),
         (["th", "is"], ["hi", "s "]),
         ([" i", "s "], ["is", " t"]),
         (["te", "st"], ["es", "t "]),  # codespell:ignore
         ([" d", "at"], ["da", "ta"]),
         (["ar", "ec"], ["re", "co"]),
+        (["or", "d "], ["rd", " 2"]),
         (["th", "is"], ["hi", "s "]),
         ([" i", "s "], ["is", " t"]),
-        (["te", "st"], ["es", "t "]),  # codespell:ignore
-        ([" d", "at"], ["da", "ta"]),
     ]
 
 

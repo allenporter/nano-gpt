@@ -74,15 +74,19 @@ def chunk_input(
     worker_count: int = 1,
 ) -> list[tuple[torch.Tensor, torch.Tensor]]:
     """Chunk the input into batches."""
+    if worker_num > worker_count:
+        raise ValueError("worker_num must be less than worker_count")
     B, T = config.micro_batch_size, config.sequence_length
     pos = config.chunk_token_size * worker_num
+    endpos = pos + config.chunk_token_size + 1
     results: list[tuple[torch.Tensor, torch.Tensor]] = []
-    while (pos + config.chunk_token_size * worker_count + 1) < len(tokens):
-        buf = tokens[pos : pos + config.chunk_token_size * worker_count + 1]
+    while endpos <= len(tokens):
+        buf = tokens[pos:endpos]
         x = buf[:-1].view(B, T)
         y = buf[1:].view(B, T)
         results.append((x, y))
         pos += config.chunk_token_size * worker_count
+        endpos += config.chunk_token_size * worker_count
     return results
 
 
@@ -295,7 +299,7 @@ def read_preprocessed_corpus(
     worker_count: int = 1,
 ) -> Generator[tuple[torch.Tensor, torch.Tensor]]:
     """Read the preprocessed corpus.
-    
+
     If worker_num and worker_count are provided, it will read only the
     specified worker's portion of the data.
     """
