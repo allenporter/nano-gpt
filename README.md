@@ -148,11 +148,11 @@ Additional features to add:
 - [x] Make dataset chunk coding respect rank
 - [x] Add tests for chunked rank
 - [x] Fix chunk_input performance
-- [ ] hellaswag every N runs of training
+- [x] hellaswag every N runs of training
 - [ ] support checkpointing model
 - [ ] log performance stats to disk
-- [ ] ability to reset validation or not cycle
-- [ ] validation set in eval command
-- [ ] validation set in train command
+- [x] ability to reset validation or not cycle
+- [x] validation set in eval command
+- [x] validation set in train command
 - [ ] plot baseline of gpt2
 - [ ] plot results from performance log
