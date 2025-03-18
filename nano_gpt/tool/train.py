@@ -67,6 +67,7 @@ import torch
 from nano_gpt.datasets.data_loader import read_preprocessed_corpus
 from nano_gpt.datasets import hellaswag
 from nano_gpt.trainer import train, WorkerState
+from nano_gpt.checkpoint import CHECKPOINT_DIR
 
 from .model_config import (
     create_model_arguments,
@@ -111,6 +112,19 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         default=250,
         help="The number of steps between evaluations.",
     )
+    args.add_argument(
+        "--checkpoint-steps",
+        type=int,
+        default=None,
+        help="The number of steps between checkpoints.",
+    )
+    args.add_argument(
+        "--checkpoint-dir",
+        type=str,
+        default=str(CHECKPOINT_DIR),
+        help="The path to the checkpoint directory",
+    )
+
     create_eval_arguments(args)
     create_sample_arguments(args)
     create_dataset_arguments(args)
@@ -155,6 +169,7 @@ def run(args: argparse.Namespace) -> int:
         config.train_config,
         train_data_loader=train_data_loader,
         eval_config=eval_config,
+        dataset_config=dataset_config,
         val_data_loader=val_data_loader,
         hellaswag_loader=hellaswag_val,
         sample_config=sample_config,

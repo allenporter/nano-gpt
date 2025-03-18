@@ -149,3 +149,4 @@ dmypy.json
 
 # Cache files
 dataset_cache
+checkpoints

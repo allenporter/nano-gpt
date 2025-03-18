@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import enum
 import logging
 import pathlib
-from typing import Protocol
+from typing import Protocol, Any
 
 import datasets
 
@@ -144,6 +144,12 @@ class TrainConfig:
     eval_steps: int = 250
     """Number of steps between each evaluation of validation loss."""
 
+    checkpoint_steps: int = 5000
+    """Number of steps between each checkpoint save."""
+
+    checkpoint_dir: pathlib.Path | None = None
+    """Path with a filename format string containing {step} format."""
+
     def __post_init__(self) -> None:
         """Post init."""
         if self.total_batch_size % self.chunk_token_size != 0:
@@ -260,12 +266,14 @@ def config_from(
     total_batch_size: int | None = None,
     max_steps: int | None = None,
     eval_steps: int | None = None,
+    checkpoint_steps: int | None = None,
+    checkpoint_dir: pathlib.Path | None = None,
 ) -> TrainedModelConfig:
     """Return the configuration for the model."""
     if (config := MODELS.get(model_type)) is None:
         raise ValueError(f"Unknown model type: {model_type}")
     model_config_updates = {}
-    train_config_updates = {}
+    train_config_updates: dict[str, Any] = {}
     if micro_batch_size is not None:
         train_config_updates["micro_batch_size"] = micro_batch_size
     if sequence_length is not None:
@@ -277,6 +285,10 @@ def config_from(
         train_config_updates["max_steps"] = max_steps
     if eval_steps is not None:
         train_config_updates["eval_steps"] = eval_steps
+    if checkpoint_steps is not None:
+        train_config_updates["checkpoint_steps"] = checkpoint_steps
+    if checkpoint_dir is not None:
+        train_config_updates["checkpoint_dir"] = checkpoint_dir
     return TrainedModelConfig(
         model_name=config.model_name,
         model_config=dataclasses.replace(

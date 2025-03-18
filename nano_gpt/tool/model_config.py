@@ -112,6 +112,8 @@ def model_from_args(args: Any) -> tuple[GPT, Tokenizer, TrainedModelConfig | Non
                     "max_steps",
                     "eval_steps",
                     "eval_num_samples",
+                    "checkpoint_steps",
+                    "checkpoint_dir",
                 }
                 if (value := getattr(args, key, None)) is not None
             },
