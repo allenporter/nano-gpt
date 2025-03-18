@@ -146,7 +146,7 @@ This project is managed with [scruft](https://github.com/allenporter/scruft)
 Additional features to add:
 - [ ] Add DDP in train loop
 - [x] Make dataset chunk coding respect rank
-- [ ] Add tests for chunked rank
+- [x] Add tests for chunked rank
 - [ ] Fix chunk_input performance
 - [ ] hellaswag every N runs of training
 - [ ] support checkpointing model
