@@ -67,6 +67,28 @@ class DatasetConfig:
 
 
 @dataclass(frozen=True, kw_only=True)
+class SampleConfig:
+    """This class defines the configuration for sampling the dataset."""
+
+    num_return_sequences: int = 5
+    """The number of sequences to generate."""
+
+    max_length: int = 30
+    """The maximum length of the generated sequences."""
+
+    text: str = "Hello, I'm a language model,"
+    """The text to use as a prompt for sampling."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class HellaSwagEvalConfig:
+    """This class defines the configuration for the HellaSwag eval."""
+
+    num_samples: int | None = None
+    """The number of samples to evaluate from the dataset, or all of omitted."""
+
+
+@dataclass(frozen=True, kw_only=True)
 class TrainConfig:
     """Implementats the GPT-3 learning rate."""
 
@@ -100,6 +122,9 @@ class TrainConfig:
 
     max_steps: int = 19073
     """Total number of training steps to perform."""
+
+    eval_steps: int = 250
+    """Number of steps between each evaluation."""
 
     def __post_init__(self) -> None:
         """Post init."""

@@ -11,6 +11,8 @@ from nano_gpt.config import (
     PRETRAINED,
     config_from,
     TrainedModelConfig,
+    HellaSwagEvalConfig,
+    SampleConfig,
 )
 from nano_gpt.model import GPT
 from nano_gpt.devices import get_device
@@ -106,6 +108,8 @@ def model_from_args(args: Any) -> tuple[GPT, Tokenizer, TrainedModelConfig | Non
                     "sequence_length",
                     "total_batch_size",
                     "max_steps",
+                    "eval_steps",
+                    "num_eval_samples",
                 }
                 if (value := getattr(args, key, None)) is not None
             },
@@ -130,3 +134,49 @@ def model_from_args(args: Any) -> tuple[GPT, Tokenizer, TrainedModelConfig | Non
     _LOGGER.debug("args: %s", args)
 
     return model, tokenizer, trained_model_config
+
+
+def create_eval_arguments(args: ArgumentParser) -> None:
+    """Create arguments for model evaluation."""
+    group = args.add_argument_group("eval")
+    group.add_argument(
+        "--eval-num-samples",
+        type=int,
+        default=None,
+        help="The number of samples to evaluate or all of omitted.",
+    )
+
+
+def eval_config_from_args(args: Any) -> HellaSwagEvalConfig:
+    """Create an HellaSwagEvalConfig from the flags."""
+    values = {}
+    if args.eval_num_samples is not None:
+        values["num_samples"] = args.eval_num_samples
+    return HellaSwagEvalConfig(**values)
+
+
+def create_sample_arguments(args: ArgumentParser) -> None:
+    """Create arguments for model sampling."""
+    group = args.add_argument_group("sample")
+    group.add_argument(
+        "--sample-num-sequences",
+        type=int,
+        default=5,
+        help="The number of sequences to generate.",
+    )
+    group.add_argument(
+        "--sample-max-length",
+        type=int,
+        default=30,
+        help="The maximum length of the generated sequences.",
+    )
+
+
+def sample_config_from_args(args: Any) -> SampleConfig:
+    """Create an SampleConfig from the flags."""
+    values = {}
+    if args.sample_num_sequences is not None:
+        values["num_return_sequences"] = args.sample_num_sequences
+    if args.sample_max_length is not None:
+        values["max_length"] = args.sample_max_length
+    return SampleConfig(**values)

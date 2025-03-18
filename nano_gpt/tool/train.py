@@ -38,7 +38,13 @@ from nano_gpt.datasets import TRAIN_DATASETS
 from nano_gpt.datasets.data_loader import read_preprocessed_corpus
 from nano_gpt.trainer import train
 
-from .model_config import create_model_arguments, model_from_args, DATASET_DIR
+from .model_config import (
+    create_model_arguments,
+    model_from_args,
+    DATASET_DIR,
+    create_eval_arguments,
+    create_sample_arguments,
+)
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -85,6 +91,14 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         default=None,
         help="The maximum number of training steps.",
     )
+    args.add_argument(
+        "--eval-steps",
+        type=int,
+        default=250,
+        help="The number of steps between evaluations.",
+    )
+    create_eval_arguments(args)
+    create_sample_arguments(args)
 
 
 def run(args: argparse.Namespace) -> int:
