@@ -24,13 +24,11 @@ model:
 
 import argparse
 import logging
-from typing import cast
 
 import torch
-from torch.nn import functional as F
 
 from nano_gpt.datasets import hellaswag
-from nano_gpt.devices import get_dtype
+from nano_gpt import hellaswag_eval
 
 from .model_config import create_model_arguments, model_from_args
 
@@ -43,33 +41,12 @@ SPLIT = "validation"
 def create_arguments(args: argparse.ArgumentParser) -> None:
     """Get parsed passed in arguments."""
     create_model_arguments(args)
-
-
-def get_likely_row(
-    tokens: torch.Tensor, mask: torch.Tensor, logits: torch.Tensor
-) -> int:
-    """Get the most likely row from the logits."""
-    # evaluate the autoregressive loss at all positions
-    shift_logits = (logits[..., :-1, :]).contiguous()
-    shift_tokens = (tokens[..., 1:]).contiguous()
-    flat_shift_logits = shift_logits.view(-1, shift_logits.size(-1))
-    flat_shift_tokens = shift_tokens.view(-1)
-    shift_losses = F.cross_entropy(
-        flat_shift_logits, flat_shift_tokens, reduction="none"
+    args.add_argument(
+        "--num-samples",
+        type=int,
+        default=None,
+        help="The number of samples to evaluate or all of omitted.",
     )
-    shift_losses = shift_losses.view(tokens.size(0), -1)
-    # now get the average loss just for the completion region (where mask == 1), in each row
-    shift_mask = (
-        mask[..., 1:]
-    ).contiguous()  # we must shift mask, so we start at the last prompt token
-    masked_shift_losses = shift_losses * shift_mask
-    # sum and divide by the number of 1s in the mask
-    sum_loss = masked_shift_losses.sum(dim=1)
-    avg_loss = sum_loss / shift_mask.sum(dim=1)
-    # now we have a loss for each of the 4 completions
-    # the one with the lowest loss should be the most likely
-    pred_norm = avg_loss.argmin().item()
-    return cast(int, pred_norm)
 
 
 def run(args: argparse.Namespace) -> int:
@@ -79,19 +56,10 @@ def run(args: argparse.Namespace) -> int:
     model, tokenizer, _ = model_from_args(args)
     model.eval()
 
-    num_total = 0
-    num_correct = 0
-    for i, example in enumerate(hellaswag.load_dataset(SPLIT)):
-        tokens, mask = example.tokenize(tokenizer)
-        tokens = tokens.to(args.device)
-        mask = mask.to(args.device)
-        with torch.no_grad():
-            with torch.autocast(device_type=args.device, dtype=get_dtype(args.device)):
-                logits, loss = model(tokens)
-            pred_norm = get_likely_row(tokens, mask, logits)
-        num_total += 1
-        num_correct += int(pred_norm == example.label)
-        accuracy = num_correct / num_total
-        print(f"Accuracy: {num_correct}/{num_total} = {accuracy:.4f}")
+    hellaswag_val = hellaswag.load_dataset(SPLIT)
+    result = hellaswag_eval.evaluate(
+        model, tokenizer, hellaswag_val, args.device, num_samples=args.num_samples
+    )
+    print(result)
 
     return 0
