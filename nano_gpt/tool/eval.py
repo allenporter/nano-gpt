@@ -49,7 +49,6 @@ import torch
 from nano_gpt.datasets import hellaswag
 from nano_gpt.datasets.data_loader import read_preprocessed_corpus
 from nano_gpt import hellaswag_eval, trainer
-from nano_gpt.devices import get_dtype
 
 from .model_config import (
     create_model_arguments,
@@ -83,6 +82,9 @@ def run(args: argparse.Namespace) -> int:
     model.eval()
 
     if args.dataset and eval_config.validation_steps:
+        worker_state = trainer.WorkerState(args.device)
+        _LOGGER.info("Worker state: %s", worker_state)
+
         dataset_config = dataset_config_from_args(args)
         _LOGGER.info(f"Dataset config: {dataset_config}")
         val_data_loader = read_preprocessed_corpus(
@@ -93,15 +95,14 @@ def run(args: argparse.Namespace) -> int:
         with torch.no_grad():
             loss_accum = trainer.compute_loss(
                 model,
-                device=args.device,
-                dtype=get_dtype(args.device),
+                worker_state,
                 log_label="val",
                 ds=val_ds,
                 steps=eval_config.validation_steps,
                 backward=False,
             )
         print(
-            f"validation loss: {loss_accum:0.4f} | steps: {eval_config.validation_steps}"
+            f"validation loss: {loss_accum.item():0.4f} | steps: {eval_config.validation_steps}"
         )
 
     hellaswag_val = hellaswag.load_dataset(SPLIT)

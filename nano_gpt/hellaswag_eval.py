@@ -6,11 +6,11 @@ import logging
 from typing import cast
 
 import torch
+from torch import nn
 from torch.nn import functional as F
 
 from .datasets import hellaswag
 from .devices import get_dtype
-from .model import GPT
 from .tokenizer import Tokenizer
 
 
@@ -70,9 +70,9 @@ class HellaSwagResult:
     def stats(self) -> dict[str, float | str]:
         """Get the stats."""
         return {
+            "accuracy": f"{self.accuracy:0.4f}",
             "total": self.total,
             "correct": self.correct,
-            "accuracy": f"{self.accuracy:0.4f}",
         }
 
     def __str__(self) -> str:
@@ -81,7 +81,7 @@ class HellaSwagResult:
 
 
 def evaluate(
-    model: GPT,
+    model: nn.Module,
     tokenizer: Tokenizer,
     dataset: Iterable[hellaswag.Sample],
     device: str,

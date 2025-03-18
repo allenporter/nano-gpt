@@ -64,10 +64,9 @@ import logging
 
 import torch
 
-from nano_gpt.devices import get_dtype
 from nano_gpt.datasets.data_loader import read_preprocessed_corpus
 from nano_gpt.datasets import hellaswag
-from nano_gpt.trainer import train
+from nano_gpt.trainer import train, WorkerState
 
 from .model_config import (
     create_model_arguments,
@@ -77,6 +76,7 @@ from .model_config import (
     dataset_config_from_args,
     eval_config_from_args,
     model_from_args,
+    sample_config_from_args,
 )
 
 
@@ -123,31 +123,40 @@ def run(args: argparse.Namespace) -> int:
         raise ValueError("Required flag --dataset not set")
 
     eval_config = eval_config_from_args(args)
+    sample_config = sample_config_from_args(args)
+    _LOGGER.info(f"Sample config: {sample_config}")
 
     model, tokenizer, config = model_from_args(args)
     if config is None:
         raise ValueError("No trainable model configuration found")
+
+    worker_state = WorkerState(args.device)
+    _LOGGER.info("Worker state: %s", worker_state)
 
     _LOGGER.info("Loading dataset %s (streaming=%s)", args.dataset, args.streaming)
     dataset_config = dataset_config_from_args(args)
     train_data_loader = read_preprocessed_corpus(
         dataset_config.dataset_path("train"),
         dataset_config,
+        worker_num=worker_state.ddp_rank,
+        worker_count=worker_state.ddp_world_size,
     )
     val_data_loader = read_preprocessed_corpus(
         dataset_config.dataset_path("validation"),
         dataset_config,
+        worker_num=worker_state.ddp_rank,
+        worker_count=worker_state.ddp_world_size,
     )
     hellaswag_val = hellaswag.load_dataset("validation")
     _LOGGER.info("Dataset loaded")
     train(
         model,
-        args.device,
+        worker_state,
         config.train_config,
         train_data_loader=train_data_loader,
         eval_config=eval_config,
         val_data_loader=val_data_loader,
         hellaswag_loader=hellaswag_val,
-        dtype=get_dtype(args.device),
+        sample_config=sample_config,
     )
     return 0

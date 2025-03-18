@@ -46,6 +46,7 @@ from .model_config import (
     create_sample_arguments,
     sample_config_from_args,
 )
+from nano_gpt.model import sample
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -77,14 +78,16 @@ def run(args: argparse.Namespace) -> int:
     model.eval()
 
     print(args.text)
-    samples = model.sample(
+    samples = sample(
+        model,
+        model.enc,
         sample_config.text,
         num_return_sequences=sample_config.num_return_sequences,
         max_length=sample_config.max_length,
         device=args.device,
         seed=sample_config.seed,
     )
-    for sample in samples:
-        print(">", sample)
+    for s in samples:
+        print(">", s)
 
     return 0

@@ -136,6 +136,12 @@ This will train a new gpt2 125M parameter model using 0.5M step sizes
 nano-gpt train --dataset=finewebedu --device=cuda --sequence-length=1024 --micro-batch-size=16
 ```
 
+To run with DDP across multiple GPUs you can invoke with `torchrun` e.g.
+
+```bash
+torchrun --standalone --nproc_per_node=8 `which nano-gpt` train ...
+```
+
 ## Additional details
 
 This project is managed with [scruft](https://github.com/allenporter/scruft)
@@ -144,7 +150,7 @@ This project is managed with [scruft](https://github.com/allenporter/scruft)
 ## Work Plan
 
 Additional features to add:
-- [ ] Add DDP in train loop
+- [x] Add DDP in train loop
 - [x] Make dataset chunk coding respect rank
 - [x] Add tests for chunked rank
 - [x] Fix chunk_input performance

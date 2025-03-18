@@ -1,6 +1,7 @@
 """Trainer for nano-gpt."""
 
 from collections.abc import Iterator, Iterable
+import dataclasses
 from dataclasses import dataclass
 import logging
 import math
@@ -9,12 +10,16 @@ import time
 from typing import Any
 
 import torch
+from torch import nn
 from torch.distributed import init_process_group
+from torch.nn.parallel import DistributedDataParallel as DDP
+import torch.distributed as dist
 
 from . import hellaswag_eval
-from .model import GPT
-from .config import TrainConfig, EvalConfig
+from .model import sample, GPT
+from .config import TrainConfig, EvalConfig, SampleConfig
 from .datasets import hellaswag
+from .devices import get_dtype
 
 __all__ = [
     "train",
@@ -47,27 +52,71 @@ class ValStats:
         self.val_loss_accum = 0.0
 
 
+class WorkerState:
+    """State for multi-processing using Distributed Data Parallel."""
+
+    def __init__(self, device: str) -> None:
+        """Initialize the state."""
+        # set up DDP (distributed data parallel).
+        # torchrun command sets the env variables RANK, LOCAL_RANK, and WORLD_SIZE
+        self.ddp = int(os.environ.get("RANK", -1)) != -1  # is this a ddp run?
+        if self.ddp and device != "cuda":
+            self.ddp = False
+            _LOGGER.warning(
+                "DDP requested but requested device is not cuda, disabling DDP"
+            )
+        if self.ddp:
+            init_process_group(backend="nccl")
+            self.ddp_rank = int(os.environ["RANK"])
+            self.ddp_local_rank = int(os.environ["LOCAL_RANK"])
+            self.ddp_world_size = int(os.environ["WORLD_SIZE"])
+            self.device = f"cuda:{self.ddp_local_rank}"
+        else:
+            self.ddp_rank = 0
+            self.ddp_local_rank = 0
+            self.ddp_world_size = 1
+            self.device = device
+
+    @property
+    def is_cuda(self) -> bool:
+        """Check if the device is CUDA."""
+        return self.device == "cuda"
+
+    @property
+    def dtype(self) -> torch.dtype:
+        """Get the data type."""
+        return get_dtype(self.device)
+
+    @property
+    def is_primary(self) -> bool:
+        """The primary process will do logging, checkpointing, etc."""
+        return self.ddp_rank == 0
+
+
 def compute_loss(
-    model: GPT,
-    device: str,
-    dtype: Any,
+    model: nn.Module,
+    worker_state: WorkerState,
     log_label: str,
     ds: Iterator[tuple[torch.Tensor, torch.Tensor]],
     steps: int,
     backward: bool,
-) -> float:
+) -> torch.Tensor:
     """Compute the validation loss.
 
     It is expected that the model is called in eval mode.
     This will consume items from the dataset, so it needs
     to be in the correct state before calling.
     """
-    loss_accum = 0.0
+    if not steps:
+        raise ValueError("steps must be greater than 0")
+    loss_accum = torch.zeros(1, device=worker_state.device)
     for step in range(steps):
         _LOGGER.debug("loss micro step %s: %s", log_label, step)
         x, y = next(ds)
-        x, y = x.to(device), y.to(device)
-        with torch.autocast(device_type=device, dtype=dtype):
+        x, y = x.to(worker_state.device), y.to(worker_state.device)
+        if worker_state.ddp:
+            model.require_backward_grad_sync = step == (steps - 1)  # type: ignore[assignment]
+        with torch.autocast(device_type=worker_state.device, dtype=worker_state.dtype):
             logits, loss = model(x, y)
         loss = loss / steps
         loss_accum += loss.detach()
@@ -114,52 +163,28 @@ class TrainStats:
         return " | ".join(f"{key}: {value}" for key, value in self.stats.items())
 
 
-class WorkerState:
-    """State for multi-processing using Distributed Data Parallel."""
-
-    def __init__(self, device: str) -> None:
-        """Initialize the state."""
-        # set up DDP (distributed data parallel).
-        # torchrun command sets the env variables RANK, LOCAL_RANK, and WORLD_SIZE
-        self.ddp = int(os.environ.get("RANK", -1)) != -1  # is this a ddp run?
-        if self.ddp:
-            if device != "cuda":
-                raise ValueError("DDP requested but requested device is not cuda")
-            init_process_group(backend="nccl")
-            self.ddp_rank = int(os.environ["RANK"])
-            self.ddp_local_rank = int(os.environ["LOCAL_RANK"])
-            self.ddp_world_size = int(os.environ["WORLD_SIZE"])
-            self.device = f"cuda:{self.ddp_local_rank}"
-            self.master_process = (
-                self.ddp_rank == 0
-            )  # this process will do logging, checkpointing etc.
-        else:
-            # vanilla, non-DDP run
-            self.ddp_rank = 0
-            self.ddp_local_rank = 0
-            self.ddp_world_size = 1
-            self.master_process = True
-            # attempt to autodetect device
-            self.device = device
-
-
 def train(
-    model: GPT,
-    device: Any,
+    raw_model: GPT,
+    worker_state: WorkerState,
     config: TrainConfig,
-    dtype: Any,
     train_data_loader: Iterable[tuple[torch.Tensor, torch.Tensor]],
     eval_config: EvalConfig | None = None,
     val_data_loader: Iterable[tuple[torch.Tensor, torch.Tensor]] | None = None,
     hellaswag_loader: Iterable[hellaswag.Sample] | None = None,
+    sample_config: SampleConfig | None = None,
 ) -> None:
     """Train the model."""
     config.log_info()
-    is_cuda = "cuda" in device
-    optimizer = model.configure_optimizers(
+
+    model: nn.Module = raw_model
+    tokenizer = raw_model.enc
+    if worker_state.ddp:
+        model = DDP(model, device_ids=[worker_state.ddp_local_rank])
+
+    optimizer = raw_model.configure_optimizers(
         weight_decay=0.1,
         learning_rate=get_lr(config, 0),
-        use_fused=is_cuda,
+        use_fused=worker_state.is_cuda,
     )
 
     train_ds = iter(train_data_loader)
@@ -169,45 +194,91 @@ def train(
         last_step = step == config.max_steps - 1
         stats.start_step()
 
-        if eval_config is not None and (step % config.eval_steps == 0 or last_step):
-            if val_data_loader is not None:
-                val_ds = iter(val_data_loader)
+        if eval_config is not None:
+            eval_step = step % config.eval_steps == 0
+            if (
+                (eval_step or last_step)
+                and val_data_loader is not None
+                and eval_config.validation_steps
+            ):
                 model.eval()
+                val_ds = iter(val_data_loader)
                 with torch.no_grad():
                     val_loss_accum = compute_loss(
                         model,
-                        device,
-                        dtype,
+                        worker_state,
                         "val",
                         val_ds,
                         eval_config.validation_steps,
                         backward=False,
                     )
-                print(
-                    f"validation: loss: {val_loss_accum:0.4f} | steps: {eval_config.validation_steps}"
-                )
-            if hellaswag_loader is not None:
+                if worker_state.ddp:
+                    dist.all_reduce(val_loss_accum, op=dist.ReduceOp.AVG)
+                if worker_state.is_primary:
+                    print(f"{step} val: {val_loss_accum.item():0.4f}")
+            if (
+                (eval_step or last_step)
+                and hellaswag_loader is not None
+                and eval_config.hellaswag_samples
+            ):
                 model.eval()
-                result = hellaswag_eval.evaluate(
+                with torch.no_grad():
+                    hellaswag_result = hellaswag_eval.evaluate(
+                        model,
+                        tokenizer,
+                        hellaswag_loader,
+                        worker_state.device,
+                        eval_config.hellaswag_samples,
+                    )
+                if worker_state.ddp:
+                    num_total = torch.tensor(
+                        hellaswag_result.total,
+                        dtype=torch.long,
+                        device=worker_state.device,
+                    )
+                    num_correct_norm = torch.tensor(
+                        hellaswag_result.correct,
+                        dtype=torch.long,
+                        device=worker_state.device,
+                    )
+                    dist.all_reduce(num_total, op=dist.ReduceOp.SUM)
+                    dist.all_reduce(num_correct_norm, op=dist.ReduceOp.SUM)
+                    hellaswag_result = dataclasses.replace(
+                        hellaswag_result,
+                        total=int(num_total.item()),
+                        correct=int(num_correct_norm.item()),
+                    )
+                print(f"hellaswag: {hellaswag_result}")
+            if (
+                step > 0
+                and eval_step
+                and sample_config is not None
+                and sample_config.num_return_sequences
+            ):
+                samples = sample(
                     model,
-                    model.enc,
-                    hellaswag_loader,
-                    device,
-                    eval_config.hellaswag_samples,
+                    tokenizer,
+                    sample_config.text,
+                    num_return_sequences=sample_config.num_return_sequences,
+                    max_length=sample_config.max_length,
+                    device=worker_state.device,
+                    seed=sample_config.seed + worker_state.ddp_rank,
                 )
-                print(f"hellaswag: {result}")
+                for i, s in enumerate(samples):
+                    print(f"rank {worker_state.ddp_rank} sample {i}: {s}")
 
         model.train()
         optimizer.zero_grad()
         loss_accum = compute_loss(
             model,
-            device,
-            dtype,
+            worker_state,
             "train",
             train_ds,
             config.grad_accum_steps,
             backward=True,
         )
+        if worker_state.ddp:
+            dist.all_reduce(loss_accum, op=dist.ReduceOp.AVG)
 
         # Prevent the model from getting large shocks of gradient magnitude
         norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -218,8 +289,8 @@ def train(
             param_group["lr"] = lr
 
         optimizer.step()
-        if is_cuda:
+        if worker_state.is_cuda:
             torch.cuda.synchronize()
 
-        stats.end_step(loss_accum, norm)
+        stats.end_step(loss_accum.item(), norm)
         print(stats)
