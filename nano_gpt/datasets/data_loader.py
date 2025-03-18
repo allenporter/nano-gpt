@@ -278,17 +278,18 @@ class ShardedTokenizedFileReader:
         """Initialize the file reader."""
         self._path = path
         self._files = sorted(list(path.parent.glob(f"{path.name}.*")))
-        _LOGGER.debug("Found %d files matching path: %s", len(self._files), path)
         if len(self._files) == 0:
             raise ValueError(f"No files found matching path: {path}")
 
     def __iter__(self) -> Iterator[torch.Tensor]:
         """Return the iterator."""
-        _LOGGER.debug("Starting iteration over sharded files")
-        return iter(ShardedTokenizedFileReader(self._path)._iter())
+        return iter(self._iter())
 
-    def _iter(self) -> Iterator[torch.Tensor]:
+    def _iter(self) -> Generator[torch.Tensor]:
         """Iterate through the sharded files."""
+        _LOGGER.debug(
+            "Reading %d files matching path: %s", len(self._files), self._path
+        )
         idx = 0
         while idx < len(self._files):
             yield read_tokenized_file(self._files[idx])
@@ -300,19 +301,28 @@ def read_preprocessed_corpus(
     config: DatasetConfig,
     worker_num: int = 0,
     worker_count: int = 1,
-) -> Generator[tuple[torch.Tensor, torch.Tensor]]:
+) -> Iterable[tuple[torch.Tensor, torch.Tensor]]:
     """Read the preprocessed corpus.
 
     If worker_num and worker_count are provided, it will read only the
     specified worker's portion of the data.
     """
-    _LOGGER.debug("Reading preprocessed corpus from %s", token_path)
-    while True:
-        samples = 0
-        for tokens in ShardedTokenizedFileReader(token_path):
-            for chunk in ChunkingIterable(config, tokens, worker_num, worker_count):
-                yield chunk
-                samples += 1
-        _LOGGER.info("Reached epoch")
-        if samples == 0:
-            raise ValueError("Empty dataset or dataset could not be restarted")
+
+    class Iter(Iterable[tuple[torch.Tensor, torch.Tensor]]):
+
+        def __iter__(self) -> Iterator[tuple[torch.Tensor, torch.Tensor]]:
+            """Return the iterator."""
+            _LOGGER.debug("Reading preprocessed corpus from %s", token_path)
+            while True:
+                samples = 0
+                for tokens in ShardedTokenizedFileReader(token_path):
+                    for chunk in ChunkingIterable(
+                        config, tokens, worker_num, worker_count
+                    ):
+                        yield chunk
+                        samples += 1
+                _LOGGER.info("Reached epoch")
+                if samples == 0:
+                    raise ValueError("Empty dataset or dataset could not be restarted")
+
+    return Iter()

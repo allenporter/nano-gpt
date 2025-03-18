@@ -1,6 +1,6 @@
 """Trainer for nano-gpt."""
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Iterable
 from dataclasses import dataclass
 import logging
 import math
@@ -11,8 +11,10 @@ from typing import Any
 import torch
 from torch.distributed import init_process_group
 
+from . import hellaswag_eval
 from .model import GPT
-from .config import TrainConfig
+from .config import TrainConfig, EvalConfig
+from .datasets import hellaswag
 
 __all__ = [
     "train",
@@ -33,6 +35,45 @@ def get_lr(config: TrainConfig, step: int) -> float:
     )
     coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio))
     return config.min_lr + coeff * (config.max_lr - config.min_lr)
+
+
+@dataclass
+class ValStats:
+    """Validation statistics."""
+
+    def __init__(self) -> None:
+        """Initialize the validation statistics."""
+        self.val_loss = 0.0
+        self.val_loss_accum = 0.0
+
+
+def compute_loss(
+    model: GPT,
+    device: str,
+    dtype: Any,
+    log_label: str,
+    ds: Iterator[tuple[torch.Tensor, torch.Tensor]],
+    steps: int,
+    backward: bool,
+) -> float:
+    """Compute the validation loss.
+
+    It is expected that the model is called in eval mode.
+    This will consume items from the dataset, so it needs
+    to be in the correct state before calling.
+    """
+    loss_accum = 0.0
+    for step in range(steps):
+        _LOGGER.debug("loss micro step %s: %s", log_label, step)
+        x, y = next(ds)
+        x, y = x.to(device), y.to(device)
+        with torch.autocast(device_type=device, dtype=dtype):
+            logits, loss = model(x, y)
+        loss = loss / steps
+        loss_accum += loss.detach()
+        if backward:
+            loss.backward()
+    return loss_accum
 
 
 @dataclass
@@ -105,9 +146,12 @@ class WorkerState:
 def train(
     model: GPT,
     device: Any,
-    data_loader: Iterator[tuple[torch.Tensor, torch.Tensor]],
     config: TrainConfig,
     dtype: Any,
+    train_data_loader: Iterable[tuple[torch.Tensor, torch.Tensor]],
+    eval_config: EvalConfig | None = None,
+    val_data_loader: Iterable[tuple[torch.Tensor, torch.Tensor]] | None = None,
+    hellaswag_loader: Iterable[hellaswag.Sample] | None = None,
 ) -> None:
     """Train the model."""
     config.log_info()
@@ -118,24 +162,52 @@ def train(
         use_fused=is_cuda,
     )
 
-    ds = iter(data_loader)
-
+    train_ds = iter(train_data_loader)
     stats = TrainStats(config)
 
     for step in range(config.max_steps):
+        last_step = step == config.max_steps - 1
         stats.start_step()
-        optimizer.zero_grad()
 
-        loss_accum = 0.0
-        for micro_step in range(config.grad_accum_steps):
-            _LOGGER.debug("micro_step: %s", micro_step)
-            x, y = next(ds)
-            x, y = x.to(device), y.to(device)
-            with torch.autocast(device_type=device, dtype=dtype):
-                logits, loss = model(x, y)
-            loss = loss / config.grad_accum_steps
-            loss_accum += loss.item()
-            loss.backward()
+        if eval_config is not None and (step % config.eval_steps == 0 or last_step):
+            if val_data_loader is not None:
+                val_ds = iter(val_data_loader)
+                model.eval()
+                with torch.no_grad():
+                    val_loss_accum = compute_loss(
+                        model,
+                        device,
+                        dtype,
+                        "val",
+                        val_ds,
+                        eval_config.validation_steps,
+                        backward=False,
+                    )
+                print(
+                    f"validation: loss: {val_loss_accum:0.4f} | steps: {eval_config.validation_steps}"
+                )
+            if hellaswag_loader is not None:
+                model.eval()
+                result = hellaswag_eval.evaluate(
+                    model,
+                    model.enc,
+                    hellaswag_loader,
+                    device,
+                    eval_config.hellaswag_samples,
+                )
+                print(f"hellaswag: {result}")
+
+        model.train()
+        optimizer.zero_grad()
+        loss_accum = compute_loss(
+            model,
+            device,
+            dtype,
+            "train",
+            train_ds,
+            config.grad_accum_steps,
+            backward=True,
+        )
 
         # Prevent the model from getting large shocks of gradient magnitude
         norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)

@@ -1,7 +1,7 @@
 """Tests for the GPT-2 model architecture."""
 
 from nano_gpt.model import GPT
-from nano_gpt.config import GPTConfig, config_from
+from nano_gpt.config import GPTConfig, DatasetConfig
 from nano_gpt.datasets.data_loader import preprocess_dataset
 from nano_gpt.tokenizer import Tokenizer
 
@@ -20,22 +20,20 @@ def test_block_size(fake_tokenizer: Tokenizer) -> None:
 
     model = GPT(config, tokenizer=fake_tokenizer)
 
-    train_config = config_from(
-        "gpt2", micro_batch_size=2, sequence_length=4
-    ).train_config
+    dataset_config = DatasetConfig(micro_batch_size=2, sequence_length=4)
     data_loader = preprocess_dataset(
         ["this is test data"],
         fake_tokenizer,
-        train_config.dataset_config,
+        dataset_config,
     )
     ds = iter(data_loader)
     x, y = next(ds)
-    assert x.shape == (train_config.micro_batch_size, train_config.sequence_length)
-    assert y.shape == (train_config.micro_batch_size, train_config.sequence_length)
+    assert x.shape == (dataset_config.micro_batch_size, dataset_config.sequence_length)
+    assert y.shape == (dataset_config.micro_batch_size, dataset_config.sequence_length)
     logits, loss = model(x, y)
     assert logits.shape == (
-        train_config.micro_batch_size,
-        train_config.sequence_length,
+        dataset_config.micro_batch_size,
+        dataset_config.sequence_length,
         vocab_size,
     )
     assert isinstance(loss.item(), float)

@@ -8,7 +8,6 @@ from typing import cast
 import torch
 from torch.nn import functional as F
 
-from .config import HellaSwagEvalConfig
 from .datasets import hellaswag
 from .devices import get_dtype
 from .model import GPT
@@ -86,12 +85,12 @@ def evaluate(
     tokenizer: Tokenizer,
     dataset: Iterable[hellaswag.Sample],
     device: str,
-    eval_config: HellaSwagEvalConfig,
+    num_samples: int | None = None,
 ) -> HellaSwagResult:
     """Evaluate the model on the hellaswag dataset."""
     result = HellaSwagResult()
     for i, example in enumerate(dataset):
-        if eval_config.num_samples is not None and i >= eval_config.num_samples:
+        if num_samples is not None and i >= num_samples:
             break
         tokens, mask = example.tokenize(tokenizer)
         tokens = tokens.to(device)

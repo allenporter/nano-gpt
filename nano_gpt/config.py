@@ -4,6 +4,7 @@ import dataclasses
 from dataclasses import dataclass
 import enum
 import logging
+import pathlib
 from typing import Protocol
 
 import datasets
@@ -54,6 +55,12 @@ class GPTConfig:
 class DatasetConfig:
     """This class defines the configuration for chunking the dataset."""
 
+    dataset_dir: str = "dataset_cache"
+    """The directory where the dataset is stored."""
+
+    dataset_name: str = "tinyshakespeare"
+    """The name of the dataset."""
+
     micro_batch_size: int = DEFAULT_MICRO_BATCH_SIZE
     """Batch size (micro batch) (B) used for each forward/backward pass."""
 
@@ -64,6 +71,11 @@ class DatasetConfig:
     def chunk_token_size(self) -> int:
         """Number of tokens in each micro batch."""
         return self.micro_batch_size * self.sequence_length
+
+    def dataset_path(self, split: str) -> pathlib.Path:
+        """Return the path to the dataset."""
+        dataset_dir = pathlib.Path(self.dataset_dir)
+        return dataset_dir / f"{self.dataset_name}_{split}.npy"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -84,11 +96,14 @@ class SampleConfig:
 
 
 @dataclass(frozen=True, kw_only=True)
-class HellaSwagEvalConfig:
-    """This class defines the configuration for the HellaSwag eval."""
+class EvalConfig:
+    """This class defines the configuration for the validation loss and HellaSwag eval."""
 
-    num_samples: int | None = None
-    """The number of samples to evaluate from the dataset, or all of omitted."""
+    validation_steps: int = 20
+    """Number of validation loss iterations to perform each eval round."""
+
+    hellaswag_samples: int | None = None
+    """The number of HellaSwag evaluation results to sample or None for the entire set."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -127,23 +142,20 @@ class TrainConfig:
     """Total number of training steps to perform."""
 
     eval_steps: int = 250
-    """Number of steps between each evaluation."""
+    """Number of steps between each evaluation of validation loss."""
 
     def __post_init__(self) -> None:
         """Post init."""
-        if self.total_batch_size % self.dataset_config.chunk_token_size != 0:
+        if self.total_batch_size % self.chunk_token_size != 0:
             raise ValueError(
                 "Total batch size must be divisible by B * T"
-                f" but got {self.total_batch_size} % {self.dataset_config.chunk_token_size}"
+                f" but got {self.total_batch_size} % {self.chunk_token_size}"
             )
 
     @property
-    def dataset_config(self) -> DatasetConfig:
-        """Dataset configuration."""
-        return DatasetConfig(
-            micro_batch_size=self.micro_batch_size,
-            sequence_length=self.sequence_length,
-        )
+    def chunk_token_size(self) -> int:
+        """Number of tokens in each micro batch."""
+        return self.micro_batch_size * self.sequence_length
 
     @property
     def min_lr(self) -> float:
@@ -153,7 +165,7 @@ class TrainConfig:
     @property
     def grad_accum_steps(self) -> int:
         """Number of gradient accumulation steps."""
-        return self.total_batch_size // self.dataset_config.chunk_token_size
+        return self.total_batch_size // self.chunk_token_size
 
     def log_info(self) -> None:
         """String representation."""
@@ -247,6 +259,7 @@ def config_from(
     sequence_length: int | None = None,
     total_batch_size: int | None = None,
     max_steps: int | None = None,
+    eval_steps: int | None = None,
 ) -> TrainedModelConfig:
     """Return the configuration for the model."""
     if (config := MODELS.get(model_type)) is None:
@@ -262,6 +275,8 @@ def config_from(
         train_config_updates["total_batch_size"] = total_batch_size
     if max_steps is not None:
         train_config_updates["max_steps"] = max_steps
+    if eval_steps is not None:
+        train_config_updates["eval_steps"] = eval_steps
     return TrainedModelConfig(
         model_name=config.model_name,
         model_config=dataclasses.replace(

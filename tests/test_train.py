@@ -10,7 +10,7 @@ def test_train_stats() -> None:
     """Test the TrainStats class."""
 
     config = config_from("gpt2", micro_batch_size=4, sequence_length=256).train_config
-    assert config.dataset_config.chunk_token_size == 1024  # Used in tok/sec below
+    assert config.chunk_token_size == 1024  # Used in tok/sec below
 
     stats = TrainStats(config)
     assert stats.step == 0
