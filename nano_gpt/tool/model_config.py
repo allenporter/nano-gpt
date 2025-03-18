@@ -170,6 +170,12 @@ def create_sample_arguments(args: ArgumentParser) -> None:
         default=30,
         help="The maximum length of the generated sequences.",
     )
+    group.add_argument(
+        "--sample-seed",
+        type=int,
+        default=42,
+        help="The seed to use for sampling.",
+    )
 
 
 def sample_config_from_args(args: Any) -> SampleConfig:
@@ -179,4 +185,6 @@ def sample_config_from_args(args: Any) -> SampleConfig:
         values["num_return_sequences"] = args.sample_num_sequences
     if args.sample_max_length is not None:
         values["max_length"] = args.sample_max_length
+    if args.sample_seed is not None:
+        values["seed"] = args.sample_seed
     return SampleConfig(**values)

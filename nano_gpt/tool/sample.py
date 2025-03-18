@@ -71,6 +71,7 @@ def run(args: argparse.Namespace) -> int:
         sample_config,
         text=" ".join(args.text),
     )
+    _LOGGER.info(f"Sample config: {sample_config}")
 
     model, _, _ = model_from_args(args)
     model.eval()
@@ -81,6 +82,7 @@ def run(args: argparse.Namespace) -> int:
         num_return_sequences=sample_config.num_return_sequences,
         max_length=sample_config.max_length,
         device=args.device,
+        seed=sample_config.seed,
     )
     for sample in samples:
         print(">", sample)

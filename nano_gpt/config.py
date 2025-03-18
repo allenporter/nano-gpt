@@ -79,6 +79,9 @@ class SampleConfig:
     text: str = "Hello, I'm a language model,"
     """The text to use as a prompt for sampling."""
 
+    seed: int = 42
+    """The seed to use for sampling."""
+
 
 @dataclass(frozen=True, kw_only=True)
 class HellaSwagEvalConfig:

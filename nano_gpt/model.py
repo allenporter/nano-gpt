@@ -264,6 +264,7 @@ class GPT(nn.Module):
         num_return_sequences: int,
         max_length: int,
         device: str,
+        seed: int = 42,
     ) -> list[str]:
         """Sample from the model from text input."""
         tokenized_text = self.enc.encode(text)
@@ -273,6 +274,9 @@ class GPT(nn.Module):
 
         # x is (B, T)
         x = tokens.to(device)
+
+        sample_rng = torch.Generator(device=device)
+        sample_rng.manual_seed(seed)
 
         # With each loop iteration we'll append a token to the sequence. This is
         # adding one more column to x each time.
@@ -290,7 +294,7 @@ class GPT(nn.Module):
                 # Both are (5, 50)
                 topk_probs, topk_indicies = torch.topk(probs, 50, dim=-1)
                 # Select a token from the top 5
-                ix = torch.multinomial(topk_probs, 1)  # (B, 1)
+                ix = torch.multinomial(topk_probs, 1, generator=sample_rng)  # (B, 1)
                 # Gather corresponding indicidies
                 xcol = torch.gather(topk_indicies, -1, ix)
                 # Append the new character to the sequence (one for each in the batch)
