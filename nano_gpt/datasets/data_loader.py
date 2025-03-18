@@ -15,7 +15,10 @@ import tqdm
 from nano_gpt.tokenizer import Tokenizer
 from nano_gpt.config import DatasetConfig
 
-__all__ = ["preprocess_dataset"]
+__all__ = [
+    "preprocess_corpus",
+    "read_preprocessed_corpus",
+]
 
 _LOGGER = logging.getLogger(__name__)
 _T = TypeVar("_T")
@@ -67,27 +70,37 @@ def tokenize_dataset(
     return MapIterable(torch.tensor, tokenized_ds)
 
 
-def chunk_input(
-    config: DatasetConfig,
-    tokens: torch.Tensor,
-    worker_num: int = 0,
-    worker_count: int = 1,
-) -> list[tuple[torch.Tensor, torch.Tensor]]:
-    """Chunk the input into batches."""
-    if worker_num > worker_count:
-        raise ValueError("worker_num must be less than worker_count")
-    B, T = config.micro_batch_size, config.sequence_length
-    pos = config.chunk_token_size * worker_num
-    endpos = pos + config.chunk_token_size + 1
-    results: list[tuple[torch.Tensor, torch.Tensor]] = []
-    while endpos <= len(tokens):
-        buf = tokens[pos:endpos]
-        x = buf[:-1].view(B, T)
-        y = buf[1:].view(B, T)
-        results.append((x, y))
-        pos += config.chunk_token_size * worker_count
-        endpos += config.chunk_token_size * worker_count
-    return results
+class ChunkingIterable(Iterable[tuple[torch.Tensor, torch.Tensor]]):
+    """An iterable that chunks the input into batches of example inputs and labels."""
+
+    def __init__(
+        self,
+        config: DatasetConfig,
+        tokens: torch.Tensor,
+        worker_num: int = 0,
+        worker_count: int = 1,
+    ) -> None:
+        """Initialize the chunking iterable."""
+        if worker_num > worker_count:
+            raise ValueError("worker_num must be less than worker_count")
+
+        self._config = config
+        self._tokens = tokens
+        self._worker_num = worker_num
+        self._worker_count = worker_count
+
+    def __iter__(self) -> Iterator[tuple[torch.Tensor, torch.Tensor]]:
+        """Return the iterator."""
+        B, T = self._config.micro_batch_size, self._config.sequence_length
+        pos = self._config.chunk_token_size * self._worker_num
+        endpos = pos + self._config.chunk_token_size + 1
+        while endpos <= len(self._tokens):
+            buf = self._tokens[pos:endpos]
+            x = buf[:-1].view(B, T)
+            y = buf[1:].view(B, T)
+            yield (x, y)
+            pos += self._config.chunk_token_size * self._worker_count
+            endpos += self._config.chunk_token_size * self._worker_count
 
 
 def chunk_dataset(
@@ -107,12 +120,10 @@ def chunk_dataset(
         tokens: torch.Tensor,
     ) -> list[tuple[torch.Tensor, torch.Tensor]]:
         """Chunk the input into batches."""
-        return chunk_input(config, tokens, worker_num, worker_count)
+        it = ChunkingIterable(config, tokens, worker_num, worker_count)
+        return list(it)
 
-    chunked = MapIterable(
-        _chunk_input,
-        ds,
-    )
+    chunked = MapIterable(_chunk_input, ds)
     return ChainIterable(chunked)
 
 
@@ -250,22 +261,14 @@ def preprocess_corpus(
     writer.write()
 
 
-class TokenizedFileReader:
-    """A file reader that reads tokenized files."""
-
-    def __init__(self, path: pathlib.Path) -> None:
-        """Initialize the file reader."""
-        self._path = path
-        if not path.exists():
-            raise ValueError(f"File not found: {path}")
-        self._tokens = np.load(path)
-        _LOGGER.debug("Loaded %s with %d tokens", path, len(self._tokens))
-
-    def __iter__(self) -> Iterator[torch.Tensor]:
-        """Return the iterator."""
-        tokens_np = self._tokens.astype(np.int32)
-        tokens_tt = torch.tensor(tokens_np, dtype=torch.long)
-        return iter([tokens_tt])
+def read_tokenized_file(path: pathlib.Path) -> torch.Tensor:
+    """Read a tokenized file."""
+    if not path.exists():
+        raise ValueError(f"File not found: {path}")
+    tokens = np.load(path)
+    _LOGGER.debug("Loaded %s with %d tokens", path, len(tokens))
+    tokens_np = tokens.astype(np.int32)
+    return torch.tensor(tokens_np, dtype=torch.long)
 
 
 class ShardedTokenizedFileReader:
@@ -288,7 +291,7 @@ class ShardedTokenizedFileReader:
         """Iterate through the sharded files."""
         idx = 0
         while idx < len(self._files):
-            yield from TokenizedFileReader(self._files[idx])
+            yield read_tokenized_file(self._files[idx])
             idx += 1
 
 
@@ -303,6 +306,13 @@ def read_preprocessed_corpus(
     If worker_num and worker_count are provided, it will read only the
     specified worker's portion of the data.
     """
-    reader = ShardedTokenizedFileReader(token_path)
-    chunked_ds = chunk_dataset(config, reader, worker_num, worker_count)
-    return cycle_dataset(chunked_ds)
+    _LOGGER.debug("Reading preprocessed corpus from %s", token_path)
+    while True:
+        samples = 0
+        for tokens in ShardedTokenizedFileReader(token_path):
+            for chunk in ChunkingIterable(config, tokens, worker_num, worker_count):
+                yield chunk
+                samples += 1
+        _LOGGER.info("Reached epoch")
+        if samples == 0:
+            raise ValueError("Empty dataset or dataset could not be restarted")

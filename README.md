@@ -147,7 +147,7 @@ Additional features to add:
 - [ ] Add DDP in train loop
 - [x] Make dataset chunk coding respect rank
 - [x] Add tests for chunked rank
-- [ ] Fix chunk_input performance
+- [x] Fix chunk_input performance
 - [ ] hellaswag every N runs of training
 - [ ] support checkpointing model
 - [ ] log performance stats to disk
