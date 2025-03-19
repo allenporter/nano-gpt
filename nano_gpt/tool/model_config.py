@@ -1,4 +1,12 @@
-"""Shared library for command line flags for loading models."""
+"""Shared library for command line flags for loading models.
+
+This module provides functions for creating and parsing command line arguments for
+loading models, as well as functions for converting these arguments into model
+configurations.
+
+This can be used to load a model from a checkpoint, a pretrained model, or
+initialize a model from pre-defined model configuration from the GPT-2 paper.
+"""
 
 from argparse import ArgumentParser, BooleanOptionalAction
 from collections.abc import Generator
@@ -40,14 +48,14 @@ def create_model_arguments(
     group.add_argument(
         "--pretrained",
         type=str,
-        choices=PRETRAINED,
+        choices=sorted(PRETRAINED),
         help="The name of the pretrained model to use.",
     )
     group.add_argument(
         "--model",
         type=str,
         default=default_values.get("model", "gpt2"),
-        choices=MODELS,
+        choices=sorted(MODELS),
         help="Use the specified model name configuration default values.",
     )
     group.add_argument(

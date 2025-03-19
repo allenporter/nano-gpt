@@ -1,4 +1,9 @@
-"""Logging utilities."""
+"""Logging utilities.
+
+This module provides a logging utility that can be used to log messages to a file or
+standard output. This uses a structured log format that can be parsed by tools
+for parsing and metrics gathering.
+"""
 
 import logging
 import pathlib
@@ -11,7 +16,7 @@ _LOGGER = logging.getLogger(__name__)
 
 @dataclass(frozen=True, kw_only=True)
 class LogRecord(ABC):
-    """Log record."""
+    """A structured log record."""
 
     log_type: str
     data: dict[str, Any]
@@ -27,7 +32,7 @@ class LogRecord(ABC):
 
 
 class TrainLog(ABC):
-    """Train logger."""
+    """Train logger abstract base class."""
 
     @abstractmethod
     def log(self, message: LogRecord) -> None:
@@ -35,7 +40,7 @@ class TrainLog(ABC):
 
 
 class LogFile(TrainLog):
-    """Train logger."""
+    """Train logger that logs to a file."""
 
     def __init__(self, log_file: pathlib.Path) -> None:
         """Initialize the train logger."""
@@ -52,7 +57,7 @@ class LogFile(TrainLog):
 
 
 class LogStdout(TrainLog):
-    """Train logger."""
+    """Train logger that logs to standard output."""
 
     def log(self, message: LogRecord) -> None:
         """Log a message."""
@@ -60,7 +65,7 @@ class LogStdout(TrainLog):
 
 
 class LogMulti(TrainLog):
-    """Train logger."""
+    """Train logger that logs to multiple loggers."""
 
     def __init__(self, logs: list[TrainLog]) -> None:
         """Initialize the train logger."""
@@ -75,7 +80,7 @@ class LogMulti(TrainLog):
 def create_log(
     log_file: pathlib.Path | None = None, log_stdout: bool = True
 ) -> TrainLog:
-    """Create a train logger."""
+    """Create a train logger that logs to a file and standard output."""
     logs: list[TrainLog] = []
     if log_file:
         logs.append(LogFile(log_file))

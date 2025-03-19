@@ -1,4 +1,13 @@
-"""Trainer for nano-gpt."""
+"""Trainer for nano-gpt.
+
+This module provides a trainer for the nano-gpt model. It provides a main training
+loop that can be used to train the model on a dataset. It also provides a function
+for computing the loss on a dataset, and a class for managing the state of the
+training process.
+
+This supports DDP for multi-GPU training. The training process is also resumable
+using checkpoints.
+"""
 
 from collections.abc import Iterator, Iterable
 import dataclasses
@@ -26,6 +35,7 @@ from .log import LogRecord, create_log
 
 __all__ = [
     "train",
+    "create_optimizer",
 ]
 
 

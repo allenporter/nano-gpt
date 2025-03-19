@@ -13,11 +13,14 @@ __all__ = [
     "GPTConfig",
     "DatasetConfig",
     "TrainConfig",
+    "SampleConfig",
+    "EvalConfig",
     "TrainedModelConfig",
     "Models",
     "config_from",
     "model_config_from_pretrained",
     "TrainDataset",
+    "LoadDataset",
 ]
 
 _LOGGER = logging.getLogger(__name__)

@@ -1,4 +1,9 @@
-"""Module for running the huggingface eval against the model."""
+"""Module for running the huggingface eval against the model.
+
+This module provides a function for evaluating a model on the hellaswag dataset. The
+dataset contains multiple choice questions with a single correct answer. The model
+must predict the correct answer from a list of 4 choices.
+"""
 
 from collections.abc import Iterable
 from dataclasses import dataclass

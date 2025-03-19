@@ -5,4 +5,5 @@ __all__ = [
     "eval",
     "prepare_dataset",
     "train",
+    "model_config",
 ]

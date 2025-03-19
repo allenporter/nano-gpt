@@ -2,13 +2,15 @@
 
 Usage:
 ```
-usage: nano-gpt train [-h] [--pretrained {gpt2-large,gpt2-medium,gpt2,gpt2-xl}]
-                      [--model {gpt2,gpt2-medium,gpt2-large,gpt2-xl,gpt2-xs,gpt2-xxs}] [--device DEVICE]
-                      [--sequence-length SEQUENCE_LENGTH] [--seed SEED] [--compile | --no-compile] [--total-batch-size TOTAL_BATCH_SIZE]
-                      [--streaming | --no-streaming] [--max-steps MAX_STEPS] [--eval-steps EVAL_STEPS]
-                      [--validation-steps VALIDATION_STEPS] [--hellaswag-samples HELLASWAG_SAMPLES]
-                      [--sample-num-sequences SAMPLE_NUM_SEQUENCES] [--sample-max-length SAMPLE_MAX_LENGTH] [--sample-seed SAMPLE_SEED]
-                      [--dataset {finewebedu,tinyshakespeare}] [--dataset-dir DATASET_DIR] [--micro-batch-size MICRO_BATCH_SIZE]
+usage: nano-gpt train [-h] [--pretrained {gpt2,gpt2-large,gpt2-medium,gpt2-xl}]
+                      [--model {gpt2,gpt2-large,gpt2-medium,gpt2-xl,gpt2-xs,gpt2-xxs}] [--checkpoint CHECKPOINT] [--device DEVICE]
+                      [--sequence-length SEQUENCE_LENGTH] [--seed SEED] [--compile | --no-compile]
+                      [--total-batch-size TOTAL_BATCH_SIZE] [--streaming | --no-streaming] [--max-steps MAX_STEPS]
+                      [--eval-steps EVAL_STEPS] [--checkpoint-steps CHECKPOINT_STEPS] [--checkpoint-dir CHECKPOINT_DIR]
+                      [--log-file LOG_FILE] [--validation-steps VALIDATION_STEPS] [--hellaswag-samples HELLASWAG_SAMPLES]
+                      [--sample-num-sequences SAMPLE_NUM_SEQUENCES] [--sample-max-length SAMPLE_MAX_LENGTH]
+                      [--sample-seed SAMPLE_SEED] [--dataset {finewebedu,tinyshakespeare}] [--dataset-dir DATASET_DIR]
+                      [--micro-batch-size MICRO_BATCH_SIZE]
 
 Train a model
 
@@ -22,14 +24,21 @@ options:
                         The maximum number of training steps.
   --eval-steps EVAL_STEPS
                         The number of steps between evaluations.
+  --checkpoint-steps CHECKPOINT_STEPS
+                        The number of steps between checkpoints.
+  --checkpoint-dir CHECKPOINT_DIR
+                        The path to the checkpoint directory
+  --log-file LOG_FILE   The path to the log file.
   --micro-batch-size MICRO_BATCH_SIZE
                         The number of batches of examples to pull from the dataset in each micro step.
 
 model:
-  --pretrained {gpt2-large,gpt2-medium,gpt2,gpt2-xl}
+  --pretrained {gpt2,gpt2-large,gpt2-medium,gpt2-xl}
                         The name of the pretrained model to use.
-  --model {gpt2,gpt2-medium,gpt2-large,gpt2-xl,gpt2-xs,gpt2-xxs}
+  --model {gpt2,gpt2-large,gpt2-medium,gpt2-xl,gpt2-xs,gpt2-xxs}
                         Use the specified model name configuration default values.
+  --checkpoint CHECKPOINT
+                        Load a model from a checkpoint.
   --device DEVICE       The device to use.
   --sequence-length SEQUENCE_LENGTH
                         The sequence length used for input content in each micro batch.

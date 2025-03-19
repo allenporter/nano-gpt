@@ -2,15 +2,14 @@
 
 Usage:
 ```
-usage: nano-gpt prepare_dataset [-h] --dataset {tinyshakespeare,finewebedu} [--splits SPLITS]
-                                [--tokens-per-shard TOKENS_PER_SHARD] [--dataset-dir DATASET_DIR]
-                                [--num-procs NUM_PROCS]
+usage: nano-gpt prepare_dataset [-h] --dataset {finewebedu,tinyshakespeare} [--splits SPLITS] [--tokens-per-shard TOKENS_PER_SHARD]
+                                [--dataset-dir DATASET_DIR] [--num-procs NUM_PROCS]
 
 Evaluate a model
 
 options:
   -h, --help            show this help message and exit
-  --dataset {tinyshakespeare,finewebedu}
+  --dataset {finewebedu,tinyshakespeare}
                         Use the specified dataset.
   --splits SPLITS       Use the specified dataset.
   --tokens-per-shard TOKENS_PER_SHARD
@@ -42,7 +41,7 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         "--dataset",
         type=str,
         help="Use the specified dataset.",
-        choices=TRAIN_DATASETS.keys(),
+        choices=sorted(TRAIN_DATASETS.keys()),
         required=True,
     )
     args.add_argument(
@@ -65,7 +64,7 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
     )
     default_cpu_count = 1
     if (cnt := os.cpu_count()) is not None:
-        default_cpu_count = max(default_cpu_count, cnt//2)
+        default_cpu_count = max(default_cpu_count, cnt // 2)
     args.add_argument(
         "--num-procs",
         type=int,
