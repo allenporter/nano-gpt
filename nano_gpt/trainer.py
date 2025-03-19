@@ -262,7 +262,7 @@ def train(
             and config.checkpoint_dir is not None
         ):
             checkpoint_path = (
-                pathlib.Path(config.checkpoint_dir) / f"checkpoint_{step}.pt"
+                pathlib.Path(config.checkpoint_dir) / f"checkpoint_{step:06d}.pt"
             )
             checkpoint: Checkpoint = Checkpoint(
                 model_state_dict=raw_model.state_dict(),
