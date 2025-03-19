@@ -12,7 +12,7 @@ from torch.nn import functional as F
 from .datasets import hellaswag
 from .devices import get_dtype
 from .tokenizer import Tokenizer
-
+from .log import LogRecord
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -75,9 +75,12 @@ class HellaSwagResult:
             "correct": self.correct,
         }
 
-    def __str__(self) -> str:
-        """String representation."""
-        return " | ".join(f"{key}: {value}" for key, value in self.stats.items())
+    def log_record(self) -> LogRecord:
+        """Log record."""
+        return LogRecord(
+            log_type="hellaswag",
+            data=self.stats,
+        )
 
 
 def evaluate(
@@ -100,5 +103,5 @@ def evaluate(
                 logits, loss = model(tokens)
             pred_norm = get_likely_row(tokens, mask, logits)
         result.add_result(pred_norm == example.label)
-        _LOGGER.debug("hellaswag: %s", result)
+        _LOGGER.debug("hellaswag: %s", result.log_record().message())
     return result

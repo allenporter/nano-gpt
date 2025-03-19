@@ -22,6 +22,7 @@ from .config import TrainConfig, EvalConfig, SampleConfig, DatasetConfig
 from .datasets import hellaswag
 from .checkpoint import save_checkpoint, Checkpoint
 from .devices import get_dtype
+from .log import LogRecord, create_log
 
 __all__ = [
     "train",
@@ -48,11 +49,18 @@ def get_lr(config: TrainConfig, step: int) -> float:
 class ValStats:
     """Validation statistics."""
 
+    step: int = 0
     loss_accum: float = 0.0
 
-    def __str__(self) -> str:
-        """String representation."""
-        return f"val: {self.loss_accum:0.4f}" ""
+    def log_record(self) -> LogRecord:
+        """Log record."""
+        return LogRecord(
+            log_type="val",
+            data={
+                "step": self.step,
+                "loss": self.loss_accum,
+            },
+        )
 
 
 class WorkerState:
@@ -164,9 +172,12 @@ class TrainStats:
         )
         self.step += 1
 
-    def __str__(self) -> str:
-        """String representation."""
-        return " | ".join(f"{key}: {value}" for key, value in self.stats.items())
+    def log_record(self) -> LogRecord:
+        """Log record."""
+        return LogRecord(
+            log_type="train",
+            data=self.stats,
+        )
 
 
 def train(
@@ -182,6 +193,7 @@ def train(
 ) -> None:
     """Train the model."""
     config.log_info()
+    log = create_log(config.log_file, log_stdout=True)
 
     model: nn.Module = raw_model
     tokenizer = raw_model.enc
@@ -224,9 +236,9 @@ def train(
                 )
             if worker_state.ddp:
                 dist.all_reduce(torch.tensor(val_loss_accum), op=dist.ReduceOp.AVG)
-            val_stats = ValStats(loss_accum=val_loss_accum)
+            val_stats = ValStats(step=step, loss_accum=val_loss_accum)
             if worker_state.is_primary:
-                print(f"{step} {val_stats}")
+                log.log(val_stats.log_record())
 
         if (
             step != 0
@@ -284,7 +296,7 @@ def train(
                     total=int(num_total.item()),
                     correct=int(num_correct_norm.item()),
                 )
-            print(f"hellaswag: {hellaswag_result}")
+            log.log(hellaswag_result.log_record())
         if (
             step > 0
             and eval_step
@@ -330,4 +342,4 @@ def train(
             torch.cuda.synchronize()
 
         stats.end_step(loss_accum, norm)
-        print(stats)
+        log.log(stats.log_record())

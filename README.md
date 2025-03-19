@@ -159,7 +159,7 @@ Additional features to add:
 - [x] support reading checkpoints for sampling
 - [x] support reading checkpoints for eval
 - [x] support reading checkpoints for training
-- [ ] log performance stats to disk
+- [x] log performance stats to disk
 - [x] ability to reset validation or not cycle
 - [x] validation set in eval command
 - [x] validation set in train command

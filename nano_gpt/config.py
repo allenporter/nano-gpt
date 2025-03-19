@@ -153,6 +153,9 @@ class TrainConfig:
     checkpoint_dir: pathlib.Path | None = None
     """Path with a filename format string containing {step} format."""
 
+    log_file: pathlib.Path | None = None
+    """Path to the log file."""
+
     def __post_init__(self) -> None:
         """Post init."""
         if self.total_batch_size % self.chunk_token_size != 0:
@@ -272,6 +275,7 @@ def config_from(
     eval_steps: int | None = None,
     checkpoint_steps: int | None = None,
     checkpoint_dir: pathlib.Path | None = None,
+    log_file: pathlib.Path | None = None,
 ) -> TrainedModelConfig:
     """Return the configuration for the model."""
     if (config := MODELS.get(model_type)) is None:
@@ -295,6 +299,8 @@ def config_from(
         train_config_updates["checkpoint_steps"] = checkpoint_steps
     if checkpoint_dir is not None:
         train_config_updates["checkpoint_dir"] = checkpoint_dir
+    if log_file is not None:
+        train_config_updates["log_file"] = log_file
     return TrainedModelConfig(
         model_name=config.model_name,
         model_config=dataclasses.replace(

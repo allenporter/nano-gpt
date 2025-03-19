@@ -125,6 +125,12 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         default=str(CHECKPOINT_DIR),
         help="The path to the checkpoint directory",
     )
+    args.add_argument(
+        "--log-file",
+        type=str,
+        default="train.log",
+        help="The path to the log file.",
+    )
 
     create_eval_arguments(args)
     create_sample_arguments(args)

@@ -50,6 +50,7 @@ from nano_gpt.datasets import hellaswag
 from nano_gpt.datasets.data_loader import read_preprocessed_corpus
 from nano_gpt import hellaswag_eval, trainer
 from nano_gpt.config import DatasetConfig
+from nano_gpt.log import create_log
 
 from .model_config import (
     create_model_arguments,
@@ -77,6 +78,7 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
 def run(args: argparse.Namespace) -> int:
     """Run the sample command."""
     torch.set_float32_matmul_precision("high")
+    log = create_log(None, log_stdout=True)
 
     dataset_config: DatasetConfig | None = None
     with load_checkpoint_context(args) as checkpoint:
@@ -108,18 +110,20 @@ def run(args: argparse.Namespace) -> int:
                 steps=eval_config.validation_steps,
                 backward=False,
             )
-        print(
-            f"validation loss: {loss_accum:0.4f} | steps: {eval_config.validation_steps}"
-        )
+            log.log(
+                trainer.ValStats(
+                    step=eval_config.validation_steps, loss_accum=loss_accum
+                ).log_record()
+            )
 
     hellaswag_val = hellaswag.load_dataset(SPLIT)
-    result = hellaswag_eval.evaluate(
+    hellaswag_result = hellaswag_eval.evaluate(
         model,
         tokenizer,
         hellaswag_val,
         args.device,
         eval_config.hellaswag_samples,
     )
-    print(f"hellaswag: {result}")
+    log.log(hellaswag_result.log_record())
 
     return 0
