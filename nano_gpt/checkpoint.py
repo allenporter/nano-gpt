@@ -8,7 +8,7 @@ import logging
 
 import torch
 
-from .config import GPTConfig, TrainConfig, DatasetConfig, EvalConfig
+from .config import GPTConfig, TrainConfig, DatasetConfig, EvalConfig, SampleConfig
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class Checkpoint:
     optimizer_state_dict: dict[str, Any] | None = None
     """State dict of the optimizer."""
 
-    train_config: TrainConfig | None
+    train_config: TrainConfig
     """Config of the training."""
 
     dataset_config: DatasetConfig | None
@@ -43,6 +43,12 @@ class Checkpoint:
 
     eval_config: EvalConfig | None
     """Config of the evaluation."""
+
+    sample_config: SampleConfig | None
+    """Config of the sampling."""
+
+    name: str | None = None
+    """Name of the checkpoint."""
 
 
 def save_checkpoint(
@@ -59,8 +65,11 @@ def save_checkpoint(
 
 def load_checkpoint(checkpoint_path: pathlib.Path) -> Checkpoint:
     """Load the model from disk."""
+    if not checkpoint_path.exists():
+        raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_path}")
     checkpoint_dict = torch.load(str(checkpoint_path))
     return Checkpoint(
+        name=checkpoint_path.stem,
         model_state_dict=checkpoint_dict["model_state_dict"],
         config=GPTConfig(**checkpoint_dict["config"]),
         step=checkpoint_dict["step"],
@@ -69,4 +78,5 @@ def load_checkpoint(checkpoint_path: pathlib.Path) -> Checkpoint:
         train_config=TrainConfig(**checkpoint_dict["train_config"]),
         dataset_config=DatasetConfig(**checkpoint_dict["dataset_config"]),
         eval_config=EvalConfig(**checkpoint_dict["eval_config"]),
+        sample_config=SampleConfig(**checkpoint_dict["sample_config"]),
     )

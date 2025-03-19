@@ -1,13 +1,16 @@
 """Shared library for command line flags for loading models."""
 
 from argparse import ArgumentParser, BooleanOptionalAction
+from collections.abc import Generator
+from contextlib import contextmanager
+import dataclasses
 import logging
-from typing import Any, cast
 import pathlib
+from typing import Any, cast
 
 import torch
 
-from nano_gpt.checkpoint import load_checkpoint
+from nano_gpt.checkpoint import load_checkpoint, Checkpoint
 from nano_gpt.config import (
     MODELS,
     PRETRAINED,
@@ -55,19 +58,16 @@ def create_model_arguments(
     group.add_argument(
         "--device",
         type=str,
-        default=get_device(),
         help="The device to use.",
     )
     group.add_argument(
         "--sequence-length",
         type=int,
-        default=None,
         help="The sequence length used for input content in each micro batch.",
     )
     group.add_argument(
         "--seed",
         type=int,
-        default=default_values.get("seed", 0),
         help="The seed to use for sampling/training.",
     )
     group.add_argument(
@@ -101,41 +101,75 @@ def model_config_from_args(
     )
 
 
-def model_from_args(args: Any) -> tuple[GPT, Tokenizer, TrainedModelConfig | None]:
+@contextmanager
+def load_checkpoint_context(args: Any) -> Generator[Checkpoint | None, None, None]:
+    """Load a checkpoint from the flags.
+
+    This is a context manager so that the checkpoint can be used across multiple calls to
+    parse arguments, but then discarded after the checkpoint is no longer needed.
+    """
+    if args.checkpoint is not None:
+        checkpoint_path = pathlib.Path(args.checkpoint)
+        _LOGGER.info("Restoring from checkpoint: %s", checkpoint_path)
+        yield load_checkpoint(checkpoint_path)
+    else:
+        yield None
+
+
+def _trained_model_config_dict_from_args(args: Any) -> dict[str, Any]:
+    """Create a TrainedModelConfig parameter dict from flags."""
+    return {
+        key: value
+        for key in {
+            "seed",
+            "micro_batch_size",
+            "sequence_length",
+            "total_batch_size",
+            "max_steps",
+            "eval_steps",
+            "eval_num_samples",
+            "checkpoint_steps",
+            "checkpoint_dir",
+        }
+        if (value := getattr(args, key, None)) is not None
+    }
+
+
+def model_from_args(
+    args: Any, checkpoint: Checkpoint | None
+) -> tuple[GPT, Tokenizer, TrainedModelConfig | None]:
     """Create a model from the flags."""
     _check_model_arguments(args)
     tokenizer = get_tokenizer()
     trained_model_config: TrainedModelConfig | None = None
-    if args.checkpoint is not None:
-        _LOGGER.info("Restoring model from checkpoint: %s", args.checkpoint)
-        checkpoint_path = pathlib.Path(args.checkpoint)
-        checkpoint = load_checkpoint(checkpoint_path)
-        model = GPT(checkpoint.config, tokenizer=tokenizer)
-        model.load_state_dict(checkpoint.model_state_dict)
-    elif args.pretrained is not None:
+    if args.pretrained is not None:
+        if checkpoint is not None:
+            raise ValueError("Cannot specify both --pretrained and --checkpoint")
         _LOGGER.info("loading weights from pretrained gpt: %s" % args.pretrained)
         model = GPT.from_pretrained(args.pretrained, tokenizer=tokenizer)
+    elif checkpoint is not None:
+        _LOGGER.debug("initializing model from config: %s", checkpoint.config)
+        model = GPT(checkpoint.config, tokenizer=tokenizer)
+        model.load_state_dict(checkpoint.model_state_dict)
+        train_config = dataclasses.replace(
+            checkpoint.train_config,
+            **_trained_model_config_dict_from_args(args),
+        )
+        trained_model_config = TrainedModelConfig(
+            model_name=checkpoint.name or "checkpoint",
+            model_config=checkpoint.config,
+            train_config=train_config,
+        )
     else:
         trained_model_config = config_from(
             args.model,
-            **{
-                key: value
-                for key in {
-                    "micro_batch_size",
-                    "sequence_length",
-                    "total_batch_size",
-                    "max_steps",
-                    "eval_steps",
-                    "eval_num_samples",
-                    "checkpoint_steps",
-                    "checkpoint_dir",
-                }
-                if (value := getattr(args, key, None)) is not None
-            },
+            **_trained_model_config_dict_from_args(args),
         )
         model_config = trained_model_config.model_config
         _LOGGER.debug("initializing model from config: %s", model_config)
         model = GPT(model_config, tokenizer=tokenizer)
+    if args.device is None:
+        args.device = get_device()
     model.to(args.device)
     if args.device == "cuda":
         if args.compile:
@@ -146,11 +180,19 @@ def model_from_args(args: Any) -> tuple[GPT, Tokenizer, TrainedModelConfig | Non
     else:
         _LOGGER.debug("Model will not be compiled")
 
-    if args.seed:
-        _LOGGER.info("Setting seed to %s", args.seed)
-        torch.manual_seed(args.seed)
-        torch.cuda.manual_seed(args.seed)
-    _LOGGER.debug("args: %s", args)
+    seed: int | None = None
+    if (
+        trained_model_config is not None
+        and trained_model_config.train_config.seed is not None
+    ):
+        seed = trained_model_config.train_config.seed
+    if args.seed is not None:
+        seed = args.seed
+
+    if seed is not None:
+        _LOGGER.info("Setting seed to %s", seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
 
     return model, tokenizer, trained_model_config
 
@@ -161,24 +203,27 @@ def create_eval_arguments(args: ArgumentParser) -> None:
     group.add_argument(
         "--validation-steps",
         type=int,
-        default=20,
         help="Number of validation loss iterations to perform each eval round.",
     )
     group.add_argument(
         "--hellaswag-samples",
         type=int,
-        default=None,
         help="The number of HellaSwag evaluation results to sample or None for the entire set.",
     )
 
 
-def eval_config_from_args(args: Any) -> EvalConfig:
+def eval_config_from_args(args: Any, checkpoint: Checkpoint | None) -> EvalConfig:
     """Create an EvalConfig from the flags."""
     values = {}
     if args.validation_steps is not None:
         values["validation_steps"] = args.validation_steps
     if args.hellaswag_samples is not None:
         values["hellaswag_samples"] = args.hellaswag_samples
+    if checkpoint is not None and checkpoint.eval_config is not None:
+        return dataclasses.replace(
+            checkpoint.eval_config,
+            **values,
+        )
     return EvalConfig(**values)
 
 
@@ -188,24 +233,21 @@ def create_sample_arguments(args: ArgumentParser) -> None:
     group.add_argument(
         "--sample-num-sequences",
         type=int,
-        default=5,
         help="The number of sequences to generate.",
     )
     group.add_argument(
         "--sample-max-length",
         type=int,
-        default=30,
         help="The maximum length of the generated sequences.",
     )
     group.add_argument(
         "--sample-seed",
         type=int,
-        default=42,
         help="The seed to use for sampling.",
     )
 
 
-def sample_config_from_args(args: Any) -> SampleConfig:
+def sample_config_from_args(args: Any, checkpoint: Checkpoint | None) -> SampleConfig:
     """Create an SampleConfig from the flags."""
     values = {}
     if args.sample_num_sequences is not None:
@@ -214,6 +256,11 @@ def sample_config_from_args(args: Any) -> SampleConfig:
         values["max_length"] = args.sample_max_length
     if args.sample_seed is not None:
         values["seed"] = args.sample_seed
+    if checkpoint is not None and checkpoint.sample_config is not None:
+        return dataclasses.replace(
+            checkpoint.sample_config,
+            **values,
+        )
     return SampleConfig(**values)
 
 
@@ -236,12 +283,11 @@ def create_dataset_arguments(args: ArgumentParser) -> None:
     args.add_argument(
         "--micro-batch-size",
         type=int,
-        default=None,
         help="The number of batches of examples to pull from the dataset in each micro step.",
     )
 
 
-def dataset_config_from_args(args: Any) -> DatasetConfig:
+def dataset_config_from_args(args: Any, checkpoint: Checkpoint | None) -> DatasetConfig:
     """Create a DatasetConfig from the flags."""
     values = {}
     if args.dataset is not None:
@@ -252,4 +298,9 @@ def dataset_config_from_args(args: Any) -> DatasetConfig:
         values["micro_batch_size"] = args.micro_batch_size
     if args.sequence_length is not None:
         values["sequence_length"] = args.sequence_length
+    if checkpoint is not None and checkpoint.dataset_config is not None:
+        return dataclasses.replace(
+            checkpoint.dataset_config,
+            **values,
+        )
     return DatasetConfig(**values)

@@ -156,9 +156,9 @@ Additional features to add:
 - [x] Fix chunk_input performance
 - [x] hellaswag every N runs of training
 - [x] support checkpointing model
-- [ ] support reading checkpoints for sampling
-- [ ] support reading checkpoints for eval
-- [ ] support reading checkpoints for training
+- [x] support reading checkpoints for sampling
+- [x] support reading checkpoints for eval
+- [x] support reading checkpoints for training
 - [ ] log performance stats to disk
 - [x] ability to reset validation or not cycle
 - [x] validation set in eval command

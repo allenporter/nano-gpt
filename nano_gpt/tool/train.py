@@ -61,6 +61,7 @@ dataset:
 
 import argparse
 import logging
+from collections.abc import Iterable
 
 import torch
 
@@ -78,6 +79,7 @@ from .model_config import (
     eval_config_from_args,
     model_from_args,
     sample_config_from_args,
+    load_checkpoint_context,
 )
 
 
@@ -90,7 +92,6 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
     args.add_argument(
         "--total-batch-size",
         type=int,
-        default=None,
         help="The number of tokens to use in each gradient accumulation batch (of micro-batches).",
     )
     args.add_argument(
@@ -136,32 +137,38 @@ def run(args: argparse.Namespace) -> int:
     if args.dataset is None:
         raise ValueError("Required flag --dataset not set")
 
-    eval_config = eval_config_from_args(args)
-    sample_config = sample_config_from_args(args)
-    _LOGGER.info(f"Sample config: {sample_config}")
+    with load_checkpoint_context(args) as checkpoint:
+        eval_config = eval_config_from_args(args, checkpoint)
+        sample_config = sample_config_from_args(args, checkpoint)
+        _LOGGER.info(f"Sample config: {sample_config}")
 
-    model, tokenizer, config = model_from_args(args)
-    if config is None:
-        raise ValueError("No trainable model configuration found")
+        model, tokenizer, config = model_from_args(args, checkpoint)
+        if config is None:
+            raise ValueError("No trainable model configuration found")
+
+        dataset_config = dataset_config_from_args(args, checkpoint)
 
     worker_state = WorkerState(args.device)
     _LOGGER.info("Worker state: %s", worker_state)
 
     _LOGGER.info("Loading dataset %s (streaming=%s)", args.dataset, args.streaming)
-    dataset_config = dataset_config_from_args(args)
     train_data_loader = read_preprocessed_corpus(
         dataset_config.dataset_path("train"),
         dataset_config,
         worker_num=worker_state.ddp_rank,
         worker_count=worker_state.ddp_world_size,
     )
-    val_data_loader = read_preprocessed_corpus(
-        dataset_config.dataset_path("validation"),
-        dataset_config,
-        worker_num=worker_state.ddp_rank,
-        worker_count=worker_state.ddp_world_size,
-    )
-    hellaswag_val = hellaswag.load_dataset("validation")
+    val_data_loader: Iterable[tuple[torch.Tensor, torch.Tensor]] | None = None
+    hellaswag_val: Iterable[hellaswag.Sample] | None = None
+    if eval_config.validation_steps:
+        val_data_loader = read_preprocessed_corpus(
+            dataset_config.dataset_path("validation"),
+            dataset_config,
+            worker_num=worker_state.ddp_rank,
+            worker_count=worker_state.ddp_world_size,
+        )
+    if eval_config.hellaswag_samples is not None:
+        hellaswag_val = hellaswag.load_dataset("validation")
     _LOGGER.info("Dataset loaded")
     train(
         model,

@@ -7,7 +7,13 @@ import pytest
 import torch
 
 from nano_gpt.checkpoint import Checkpoint, save_checkpoint, load_checkpoint
-from nano_gpt.config import GPTConfig, TrainConfig, DatasetConfig, EvalConfig
+from nano_gpt.config import (
+    GPTConfig,
+    TrainConfig,
+    DatasetConfig,
+    EvalConfig,
+    SampleConfig,
+)
 from nano_gpt.model import GPT
 from nano_gpt.tokenizer import Tokenizer
 
@@ -41,6 +47,7 @@ def checkpoint_data(minimal_model: GPT) -> Checkpoint:
         ),
         dataset_config=DatasetConfig(),
         eval_config=EvalConfig(),
+        sample_config=SampleConfig(),
     )
 
 
@@ -97,6 +104,7 @@ def test_save_and_load_model_state(
             ),
             dataset_config=DatasetConfig(),
             eval_config=EvalConfig(),
+            sample_config=SampleConfig(),
         )
 
         # Save checkpoint

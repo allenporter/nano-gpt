@@ -49,6 +49,7 @@ import torch
 from nano_gpt.datasets import hellaswag
 from nano_gpt.datasets.data_loader import read_preprocessed_corpus
 from nano_gpt import hellaswag_eval, trainer
+from nano_gpt.config import DatasetConfig
 
 from .model_config import (
     create_model_arguments,
@@ -57,6 +58,7 @@ from .model_config import (
     create_eval_arguments,
     create_dataset_arguments,
     dataset_config_from_args,
+    load_checkpoint_context,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -76,22 +78,27 @@ def run(args: argparse.Namespace) -> int:
     """Run the sample command."""
     torch.set_float32_matmul_precision("high")
 
-    eval_config = eval_config_from_args(args)
-    _LOGGER.info(f"Eval config: {eval_config}")
-    model, tokenizer, _ = model_from_args(args)
-    model.eval()
+    dataset_config: DatasetConfig | None = None
+    with load_checkpoint_context(args) as checkpoint:
+        eval_config = eval_config_from_args(args, checkpoint)
+        _LOGGER.info(f"Eval config: {eval_config}")
+        model, tokenizer, _ = model_from_args(args, checkpoint)
+        model.eval()
 
-    if args.dataset and eval_config.validation_steps:
-        worker_state = trainer.WorkerState(args.device)
-        _LOGGER.info("Worker state: %s", worker_state)
+        if eval_config.validation_steps:
+            dataset_config = dataset_config_from_args(args, checkpoint)
+            _LOGGER.info(f"Dataset config: {dataset_config}")
 
-        dataset_config = dataset_config_from_args(args)
-        _LOGGER.info(f"Dataset config: {dataset_config}")
+    if dataset_config is not None and dataset_config.dataset_name is not None:
         val_data_loader = read_preprocessed_corpus(
             dataset_config.dataset_path(SPLIT),
             dataset_config,
         )
         val_ds = iter(val_data_loader)
+
+        worker_state = trainer.WorkerState(args.device)
+        _LOGGER.info("Worker state: %s", worker_state)
+
         with torch.no_grad():
             loss_accum = trainer.compute_loss(
                 model,
@@ -102,7 +109,7 @@ def run(args: argparse.Namespace) -> int:
                 backward=False,
             )
         print(
-            f"validation loss: {loss_accum.item():0.4f} | steps: {eval_config.validation_steps}"
+            f"validation loss: {loss_accum:0.4f} | steps: {eval_config.validation_steps}"
         )
 
     hellaswag_val = hellaswag.load_dataset(SPLIT)

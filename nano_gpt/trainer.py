@@ -95,6 +95,10 @@ class WorkerState:
         """The primary process will do logging, checkpointing, etc."""
         return self.ddp_rank == 0
 
+    def __str__(self) -> str:
+        """String representation."""
+        return f"WorkerState(ddp={self.ddp}, ddp_rank={self.ddp_rank}, ddp_local_rank={self.ddp_local_rank}, ddp_world_size={self.ddp_world_size}, device={self.device})"
+
 
 def compute_loss(
     model: nn.Module,
@@ -103,7 +107,7 @@ def compute_loss(
     ds: Iterator[tuple[torch.Tensor, torch.Tensor]],
     steps: int,
     backward: bool,
-) -> torch.Tensor:
+) -> float:
     """Compute the validation loss.
 
     It is expected that the model is called in eval mode.
@@ -112,9 +116,8 @@ def compute_loss(
     """
     if not steps:
         raise ValueError("steps must be greater than 0")
-    loss_accum = torch.zeros(1, device=worker_state.device)
+    loss_accum = 0.0  # torch.zeros(1, device=worker_state.device)
     for step in range(steps):
-        _LOGGER.debug("loss micro step %s: %s", log_label, step)
         x, y = next(ds)
         x, y = x.to(worker_state.device), y.to(worker_state.device)
         if worker_state.ddp:
@@ -122,7 +125,7 @@ def compute_loss(
         with torch.autocast(device_type=worker_state.device, dtype=worker_state.dtype):
             logits, loss = model(x, y)
         loss = loss / steps
-        loss_accum += loss.detach()
+        loss_accum += loss.detach().item()
         if backward:
             loss.backward()
     return loss_accum
@@ -220,8 +223,8 @@ def train(
                     backward=False,
                 )
             if worker_state.ddp:
-                dist.all_reduce(val_loss_accum, op=dist.ReduceOp.AVG)
-            val_stats = ValStats(loss_accum=val_loss_accum.item())
+                dist.all_reduce(torch.tensor(val_loss_accum), op=dist.ReduceOp.AVG)
+            val_stats = ValStats(loss_accum=val_loss_accum)
             if worker_state.is_primary:
                 print(f"{step} {val_stats}")
 
@@ -234,7 +237,7 @@ def train(
             checkpoint_path = (
                 pathlib.Path(config.checkpoint_dir) / f"checkpoint_{step}.pt"
             )
-            checkpoint = Checkpoint(
+            checkpoint: Checkpoint = Checkpoint(
                 model_state_dict=raw_model.state_dict(),
                 config=raw_model.config,
                 step=step,
@@ -245,6 +248,7 @@ def train(
                 train_config=config,
                 dataset_config=dataset_config,
                 eval_config=eval_config,
+                sample_config=sample_config,
             )
             save_checkpoint(checkpoint, checkpoint_path)
         if (
@@ -287,15 +291,17 @@ def train(
             and sample_config is not None
             and sample_config.num_return_sequences
         ):
-            samples = sample(
-                model,
-                tokenizer,
-                sample_config.text,
-                num_return_sequences=sample_config.num_return_sequences,
-                max_length=sample_config.max_length,
-                device=worker_state.device,
-                seed=sample_config.seed + worker_state.ddp_rank,
-            )
+            model.eval()
+            with torch.no_grad():
+                samples = sample(
+                    model,
+                    tokenizer,
+                    sample_config.text,
+                    num_return_sequences=sample_config.num_return_sequences,
+                    max_length=sample_config.max_length,
+                    device=worker_state.device,
+                    seed=sample_config.seed + worker_state.ddp_rank,
+                )
             for i, s in enumerate(samples):
                 print(f"rank {worker_state.ddp_rank} sample {i}: {s}")
 
@@ -310,7 +316,7 @@ def train(
             backward=True,
         )
         if worker_state.ddp:
-            dist.all_reduce(loss_accum, op=dist.ReduceOp.AVG)
+            dist.all_reduce(torch.tensor(loss_accum), op=dist.ReduceOp.AVG)
 
         # Prevent the model from getting large shocks of gradient magnitude
         norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -319,10 +325,9 @@ def train(
         lr = get_lr(config, step)
         for param_group in optimizer.param_groups:
             param_group["lr"] = lr
-
         optimizer.step()
         if worker_state.is_cuda:
             torch.cuda.synchronize()
 
-        stats.end_step(loss_accum.item(), norm)
+        stats.end_step(loss_accum, norm)
         print(stats)

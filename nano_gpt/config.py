@@ -110,6 +110,9 @@ class EvalConfig:
 class TrainConfig:
     """Implementats the GPT-3 learning rate."""
 
+    seed: int = 1337
+    """The seed to use for training."""
+
     total_batch_size: int
     """Total batch size in number of tokens for each gradient update.
 
@@ -261,6 +264,7 @@ MODELS = {model.value.model_name: model.value for model in Models}
 
 def config_from(
     model_type: str,
+    seed: int | None = None,
     micro_batch_size: int | None = None,
     sequence_length: int | None = None,
     total_batch_size: int | None = None,
@@ -274,6 +278,8 @@ def config_from(
         raise ValueError(f"Unknown model type: {model_type}")
     model_config_updates = {}
     train_config_updates: dict[str, Any] = {}
+    if seed is not None:
+        train_config_updates["seed"] = seed
     if micro_batch_size is not None:
         train_config_updates["micro_batch_size"] = micro_batch_size
     if sequence_length is not None:

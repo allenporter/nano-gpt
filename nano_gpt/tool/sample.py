@@ -40,13 +40,17 @@ import argparse
 import logging
 import dataclasses
 
+import torch
+
+from nano_gpt.model import sample
+
 from .model_config import (
     create_model_arguments,
     model_from_args,
     create_sample_arguments,
     sample_config_from_args,
+    load_checkpoint_context,
 )
-from nano_gpt.model import sample
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -67,26 +71,29 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
 
 def run(args: argparse.Namespace) -> int:
     """Run the sample command."""
-    sample_config = sample_config_from_args(args)
-    sample_config = dataclasses.replace(
-        sample_config,
-        text=" ".join(args.text),
-    )
-    _LOGGER.info(f"Sample config: {sample_config}")
+    with load_checkpoint_context(args) as checkpoint:
+        sample_config = sample_config_from_args(args, checkpoint)
+        sample_config = dataclasses.replace(
+            sample_config,
+            text=" ".join(args.text),
+        )
+        _LOGGER.info(f"Sample config: {sample_config}")
 
-    model, _, _ = model_from_args(args)
+        model, _, _ = model_from_args(args, checkpoint)
+
     model.eval()
 
     print(args.text)
-    samples = sample(
-        model,
-        model.enc,
-        sample_config.text,
-        num_return_sequences=sample_config.num_return_sequences,
-        max_length=sample_config.max_length,
-        device=args.device,
-        seed=sample_config.seed,
-    )
+    with torch.no_grad():
+        samples = sample(
+            model,
+            model.enc,
+            sample_config.text,
+            num_return_sequences=sample_config.num_return_sequences,
+            max_length=sample_config.max_length,
+            device=args.device,
+            seed=sample_config.seed,
+        )
     for s in samples:
         print(">", s)
 

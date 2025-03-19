@@ -283,24 +283,23 @@ def sample(
     # With each loop iteration we'll append a token to the sequence. This is
     # adding one more column to x each time.
     while x.size(1) < max_length:
-        with torch.no_grad():
-            logits, _ = model(x)  # (B, T, vocab_size)
-            # Take the logits at the last position (next character) and drop the others.
-            # This is correct but inefficient implementation of sampling.
-            # Question: What is T?
-            logits = logits[:, -1, :]  # (B, vocab_size)
-            probs = F.softmax(logits, dim=-1)
-            # Do top-k sampling of 50 which is the huggingface default. Get the top 50
-            # probabilities and set all other tokens to probability of zero. This helps
-            # keep the model on track so it doesn't go off the rails as easily.
-            # Both are (5, 50)
-            topk_probs, topk_indicies = torch.topk(probs, 50, dim=-1)
-            # Select a token from the top 5
-            ix = torch.multinomial(topk_probs, 1, generator=sample_rng)  # (B, 1)
-            # Gather corresponding indicidies
-            xcol = torch.gather(topk_indicies, -1, ix)
-            # Append the new character to the sequence (one for each in the batch)
-            x = torch.cat((x, xcol), dim=-1)
+        logits, _ = model(x)  # (B, T, vocab_size)
+        # Take the logits at the last position (next character) and drop the others.
+        # This is correct but inefficient implementation of sampling.
+        # Question: What is T?
+        logits = logits[:, -1, :]  # (B, vocab_size)
+        probs = F.softmax(logits, dim=-1)
+        # Do top-k sampling of 50 which is the huggingface default. Get the top 50
+        # probabilities and set all other tokens to probability of zero. This helps
+        # keep the model on track so it doesn't go off the rails as easily.
+        # Both are (5, 50)
+        topk_probs, topk_indicies = torch.topk(probs, 50, dim=-1)
+        # Select a token from the top 5
+        ix = torch.multinomial(topk_probs, 1, generator=sample_rng)  # (B, 1)
+        # Gather corresponding indicidies
+        xcol = torch.gather(topk_indicies, -1, ix)
+        # Append the new character to the sequence (one for each in the batch)
+        x = torch.cat((x, xcol), dim=-1)
 
     samples = []
     for i in range(num_return_sequences):
