@@ -33,7 +33,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def get_lr(config: TrainConfig, step: int) -> float:
-    """Learning rate."""
+    """Learning rate based on the current step."""
     if step < config.warmup_steps:
         return config.max_lr * (step + 1) / config.warmup_steps
     if step > config.max_steps:
@@ -47,7 +47,7 @@ def get_lr(config: TrainConfig, step: int) -> float:
 
 @dataclass(frozen=True, kw_only=True)
 class ValStats:
-    """Validation statistics."""
+    """Validation statistics for logging."""
 
     step: int = 0
     loss_accum: float = 0.0
@@ -141,7 +141,7 @@ def compute_loss(
 
 @dataclass
 class TrainStats:
-    """Training statistics."""
+    """Training statistics for logging."""
 
     def __init__(self, config: TrainConfig) -> None:
         """Initialize the training statistics."""
@@ -184,13 +184,13 @@ def create_optimizer(
     raw_model: GPT,
     config: TrainConfig,
     checkpoint: Checkpoint | None,
-    worker_state: WorkerState,
+    is_cuda: bool,
 ) -> torch.optim.Optimizer:
-    """Create the optimizer."""
+    """Create the optimizer with the option to resume from a checkpoint."""
     optimizer = raw_model.configure_optimizers(
         weight_decay=0.1,
         learning_rate=get_lr(config, 0),
-        use_fused=worker_state.is_cuda,
+        use_fused=is_cuda,
     )
     if checkpoint is not None:
         _LOGGER.info("Loading optimizer state from checkpoint")
@@ -211,7 +211,12 @@ def train(
     hellaswag_loader: Iterable[hellaswag.Sample] | None = None,
     sample_config: SampleConfig | None = None,
 ) -> None:
-    """Train the model."""
+    """Train the model.
+
+    This is the main training loop. It will train the model for the number of steps
+    specified in the config. It will also evaluate the model on the validation set
+    and save checkpoints.
+    """
     config.log_info()
     log = create_log(
         pathlib.Path(config.log_file) if config.log_file else None, log_stdout=True

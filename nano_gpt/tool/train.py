@@ -161,7 +161,10 @@ def run(args: argparse.Namespace) -> int:
         _LOGGER.info("Worker state: %s", worker_state)
 
         optimizer = create_optimizer(
-            model, config.train_config, checkpoint, worker_state
+            model,
+            config.train_config,
+            checkpoint,
+            worker_state.is_cuda,
         )
 
     _LOGGER.info("Loading dataset %s (streaming=%s)", args.dataset, args.streaming)
