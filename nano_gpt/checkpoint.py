@@ -52,10 +52,9 @@ def save_checkpoint(
     """Save the model to disk."""
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
     checkpoint_dict = dataclasses.asdict(checkpoint)
-    _LOGGER.debug(
-        "Saving model checkpoint on step %s to %s", checkpoint.step, checkpoint_path
-    )
+    _LOGGER.debug("Saving model checkpoint to %s", checkpoint_path)
     torch.save(checkpoint_dict, str(checkpoint_path))
+    _LOGGER.debug("Checkpoint saved")
 
 
 def load_checkpoint(checkpoint_path: pathlib.Path) -> Checkpoint:

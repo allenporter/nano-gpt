@@ -3,9 +3,11 @@
 from argparse import ArgumentParser, BooleanOptionalAction
 import logging
 from typing import Any, cast
+import pathlib
 
 import torch
 
+from nano_gpt.checkpoint import load_checkpoint
 from nano_gpt.config import (
     MODELS,
     PRETRAINED,
@@ -46,6 +48,11 @@ def create_model_arguments(
         help="Use the specified model name configuration default values.",
     )
     group.add_argument(
+        "--checkpoint",
+        type=str,
+        help="Load a model from a checkpoint.",
+    )
+    group.add_argument(
         "--device",
         type=str,
         default=get_device(),
@@ -74,8 +81,10 @@ def create_model_arguments(
 
 def _check_model_arguments(args: Any) -> None:
     """Check that the model arguments are valid."""
-    if args.pretrained is None and args.model is None:
-        raise ValueError("Either --pretrained or --model must be specified")
+    if args.pretrained is None and args.checkpoint is None and args.model is None:
+        raise ValueError(
+            "Either --pretrained or --checkpoint or --model must be specified"
+        )
 
 
 def model_config_from_args(
@@ -97,7 +106,13 @@ def model_from_args(args: Any) -> tuple[GPT, Tokenizer, TrainedModelConfig | Non
     _check_model_arguments(args)
     tokenizer = get_tokenizer()
     trained_model_config: TrainedModelConfig | None = None
-    if args.pretrained is not None:
+    if args.checkpoint is not None:
+        _LOGGER.info("Restoring model from checkpoint: %s", args.checkpoint)
+        checkpoint_path = pathlib.Path(args.checkpoint)
+        checkpoint = load_checkpoint(checkpoint_path)
+        model = GPT(checkpoint.config, tokenizer=tokenizer)
+        model.load_state_dict(checkpoint.model_state_dict)
+    elif args.pretrained is not None:
         _LOGGER.info("loading weights from pretrained gpt: %s" % args.pretrained)
         model = GPT.from_pretrained(args.pretrained, tokenizer=tokenizer)
     else:

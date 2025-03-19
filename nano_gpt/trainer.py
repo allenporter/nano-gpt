@@ -226,7 +226,8 @@ def train(
                 print(f"{step} {val_stats}")
 
         if (
-            (checkpoint_step or last_step)
+            step != 0
+            and (checkpoint_step or last_step)
             and worker_state.is_primary
             and config.checkpoint_dir is not None
         ):
@@ -234,7 +235,7 @@ def train(
                 pathlib.Path(config.checkpoint_dir) / f"checkpoint_{step}.pt"
             )
             checkpoint = Checkpoint(
-                model_state_dict=model.state_dict(),
+                model_state_dict=raw_model.state_dict(),
                 config=raw_model.config,
                 step=step,
                 val_loss_accum=(
