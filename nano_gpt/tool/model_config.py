@@ -181,7 +181,7 @@ def model_from_args(
     _LOGGER.info("Trained model config: %s", trained_model_config)
     if args.device is None:
         args.device = get_device()
-    model.to(args.device)
+    # TODO: Fix compilation with DDP
     if args.device == "cuda":
         if args.compile:
             _LOGGER.info("Compiling model")

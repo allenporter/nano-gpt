@@ -81,7 +81,7 @@ class WorkerState:
         # set up DDP (distributed data parallel).
         # torchrun command sets the env variables RANK, LOCAL_RANK, and WORLD_SIZE
         self.ddp = int(os.environ.get("RANK", -1)) != -1  # is this a ddp run?
-        if self.ddp and device != "cuda":
+        if self.ddp and "cuda" not in device:
             self.ddp = False
             _LOGGER.warning(
                 "DDP requested but requested device is not cuda, disabling DDP"
@@ -92,6 +92,7 @@ class WorkerState:
             self.ddp_local_rank = int(os.environ["LOCAL_RANK"])
             self.ddp_world_size = int(os.environ["WORLD_SIZE"])
             self.device = f"cuda:{self.ddp_local_rank}"
+            torch.cuda.set_device(self.device)
         else:
             self.ddp_rank = 0
             self.ddp_local_rank = 0
@@ -101,7 +102,7 @@ class WorkerState:
     @property
     def is_cuda(self) -> bool:
         """Check if the device is CUDA."""
-        return self.device == "cuda"
+        return "cuda" in self.device
 
     @property
     def dtype(self) -> torch.dtype:
@@ -234,6 +235,7 @@ def train(
 
     model: nn.Module = raw_model
     tokenizer = raw_model.enc
+    model.to(worker_state.device)
     if worker_state.ddp:
         model = DDP(model, device_ids=[worker_state.ddp_local_rank])
 
