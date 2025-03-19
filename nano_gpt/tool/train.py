@@ -70,7 +70,7 @@ from nano_gpt.datasets.data_loader import read_preprocessed_corpus
 from nano_gpt.datasets import hellaswag
 from nano_gpt.trainer import train, WorkerState
 from nano_gpt.checkpoint import CHECKPOINT_DIR
-
+from nano_gpt.trainer import create_optimizer
 from .model_config import (
     create_model_arguments,
     create_eval_arguments,
@@ -143,23 +143,26 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
 def run(args: argparse.Namespace) -> int:
     """Run the sample command."""
     torch.set_float32_matmul_precision("high")
-    if args.dataset is None:
-        raise ValueError("Required flag --dataset not set")
 
     with load_checkpoint_context(args) as checkpoint:
-        eval_config = eval_config_from_args(args, checkpoint)
-        sample_config = sample_config_from_args(args, checkpoint)
-        _LOGGER.info(f"Sample config: {sample_config}")
-
         model, tokenizer, config = model_from_args(args, checkpoint)
         if config is None:
             raise ValueError("No trainable model configuration found")
-
+        eval_config = eval_config_from_args(args, checkpoint)
+        _LOGGER.info(f"Eval config: {eval_config}")
+        sample_config = sample_config_from_args(args, checkpoint)
+        _LOGGER.info(f"Sample config: {sample_config}")
         dataset_config = dataset_config_from_args(args, checkpoint)
+        if dataset_config.dataset_name is None:
+            raise ValueError("Required flag --dataset is missing")
         _LOGGER.info(f"Dataset config: {dataset_config}")
 
-    worker_state = WorkerState(args.device)
-    _LOGGER.info("Worker state: %s", worker_state)
+        worker_state = WorkerState(args.device)
+        _LOGGER.info("Worker state: %s", worker_state)
+
+        optimizer = create_optimizer(
+            model, config.train_config, checkpoint, worker_state
+        )
 
     _LOGGER.info("Loading dataset %s (streaming=%s)", args.dataset, args.streaming)
     train_data_loader = read_preprocessed_corpus(
@@ -182,6 +185,7 @@ def run(args: argparse.Namespace) -> int:
     _LOGGER.info("Dataset loaded")
     train(
         model,
+        optimizer,
         worker_state,
         config.train_config,
         train_data_loader=train_data_loader,

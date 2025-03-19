@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import logging
 import math
 import os
+import pathlib
 import time
 from typing import Any
 
@@ -144,7 +145,7 @@ class TrainStats:
 
     def __init__(self, config: TrainConfig) -> None:
         """Initialize the training statistics."""
-        self.step = 0
+        self.step = config.step
         self.t0: float = 0.0
         self.config = config
         self.stats: dict[str, Any] = {}
@@ -179,8 +180,28 @@ class TrainStats:
         )
 
 
+def create_optimizer(
+    raw_model: GPT,
+    config: TrainConfig,
+    checkpoint: Checkpoint | None,
+    worker_state: WorkerState,
+) -> torch.optim.Optimizer:
+    """Create the optimizer."""
+    optimizer = raw_model.configure_optimizers(
+        weight_decay=0.1,
+        learning_rate=get_lr(config, 0),
+        use_fused=worker_state.is_cuda,
+    )
+    if checkpoint is not None:
+        _LOGGER.info("Loading optimizer state from checkpoint")
+        optimizer.load_state_dict(checkpoint.optimizer_state_dict)
+    _LOGGER.debug("Optimizer: %s", optimizer.state_dict())
+    return optimizer
+
+
 def train(
     raw_model: GPT,
+    optimizer: torch.optim.Optimizer,
     worker_state: WorkerState,
     config: TrainConfig,
     train_data_loader: Iterable[tuple[torch.Tensor, torch.Tensor]],
@@ -192,24 +213,18 @@ def train(
 ) -> None:
     """Train the model."""
     config.log_info()
-    log = create_log(config.log_file, log_stdout=True)
+    log = create_log(
+        pathlib.Path(config.log_file) if config.log_file else None, log_stdout=True
+    )
 
     model: nn.Module = raw_model
     tokenizer = raw_model.enc
     if worker_state.ddp:
         model = DDP(model, device_ids=[worker_state.ddp_local_rank])
 
-    optimizer = raw_model.configure_optimizers(
-        weight_decay=0.1,
-        learning_rate=get_lr(config, 0),
-        use_fused=worker_state.is_cuda,
-    )
-    _LOGGER.debug("Optimizer: %s", optimizer.state_dict())
-
     train_ds = iter(train_data_loader)
     stats = TrainStats(config)
-
-    for step in range(config.max_steps):
+    for step in range(config.step, config.max_steps):
         last_step = step == config.max_steps - 1
         stats.start_step()
 
@@ -241,11 +256,14 @@ def train(
 
         if (
             step != 0
+            and (step != config.step)  # don't save the initial checkpoint
             and (checkpoint_step or last_step)
             and worker_state.is_primary
             and config.checkpoint_dir is not None
         ):
-            checkpoint_path = config.checkpoint_dir / f"checkpoint_{step}.pt"
+            checkpoint_path = (
+                pathlib.Path(config.checkpoint_dir) / f"checkpoint_{step}.pt"
+            )
             checkpoint: Checkpoint = Checkpoint(
                 model_state_dict=raw_model.state_dict(),
                 config=raw_model.config,

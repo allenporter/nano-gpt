@@ -68,6 +68,9 @@ def load_checkpoint(checkpoint_path: pathlib.Path) -> Checkpoint:
     if not checkpoint_path.exists():
         raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_path}")
     checkpoint_dict = torch.load(str(checkpoint_path))
+    train_config_values = checkpoint_dict["train_config"]
+    # The training starting step gets updated to the step at which the checkpoint was saved
+    train_config_values["step"] = checkpoint_dict["step"]
     return Checkpoint(
         name=checkpoint_path.stem,
         model_state_dict=checkpoint_dict["model_state_dict"],
@@ -75,7 +78,7 @@ def load_checkpoint(checkpoint_path: pathlib.Path) -> Checkpoint:
         step=checkpoint_dict["step"],
         val_loss_accum=checkpoint_dict["val_loss_accum"],
         optimizer_state_dict=checkpoint_dict["optimizer_state_dict"],
-        train_config=TrainConfig(**checkpoint_dict["train_config"]),
+        train_config=TrainConfig(**train_config_values),
         dataset_config=DatasetConfig(**checkpoint_dict["dataset_config"]),
         eval_config=EvalConfig(**checkpoint_dict["eval_config"]),
         sample_config=SampleConfig(**checkpoint_dict["sample_config"]),

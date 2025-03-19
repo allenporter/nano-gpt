@@ -3,6 +3,7 @@
 import pathlib
 import tempfile
 import pytest
+import dataclasses
 
 import torch
 
@@ -41,6 +42,7 @@ def checkpoint_data(minimal_model: GPT) -> Checkpoint:
         val_loss_accum=0.5,
         optimizer_state_dict={"state": {}, "param_groups": []},
         train_config=TrainConfig(
+            step=0,
             total_batch_size=512,
             micro_batch_size=16,
             sequence_length=32,
@@ -69,7 +71,10 @@ def test_save_and_load_checkpoint(checkpoint_data: Checkpoint) -> None:
         assert checkpoint_data.val_loss_accum
         assert loaded_checkpoint.val_loss_accum == checkpoint_data.val_loss_accum
         assert loaded_checkpoint.config == checkpoint_data.config
-        assert loaded_checkpoint.train_config == checkpoint_data.train_config
+        # The training starting step gets updated to the step at which the checkpoint was saved
+        assert loaded_checkpoint.train_config == dataclasses.replace(
+            checkpoint_data.train_config, step=100
+        )
         assert loaded_checkpoint.dataset_config == checkpoint_data.dataset_config
         assert loaded_checkpoint.eval_config == checkpoint_data.eval_config
 

@@ -177,7 +177,12 @@ def model_from_args(
     if args.device == "cuda":
         if args.compile:
             _LOGGER.info("Compiling model")
-            model = cast(GPT, torch.compile(model))
+            try:
+                model = cast(GPT, torch.compile(model))
+            except RuntimeError as err:
+                raise RuntimeError(
+                    f"Failed to compile model, try with --no-compile: {err}"
+                ) from err
         else:
             _LOGGER.debug("Not compiling model")
     else:

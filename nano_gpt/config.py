@@ -113,6 +113,9 @@ class TrainConfig:
     seed: int = 1337
     """The seed to use for training."""
 
+    step: int = 0
+    """The starting step to use for training."""
+
     total_batch_size: int
     """Total batch size in number of tokens for each gradient update.
 
@@ -150,10 +153,10 @@ class TrainConfig:
     checkpoint_steps: int = 5000
     """Number of steps between each checkpoint save."""
 
-    checkpoint_dir: pathlib.Path | None = None
+    checkpoint_dir: str | None = None
     """Path with a filename format string containing {step} format."""
 
-    log_file: pathlib.Path | None = None
+    log_file: str | None = None
     """Path to the log file."""
 
     def __post_init__(self) -> None:
@@ -274,8 +277,8 @@ def config_from(
     max_steps: int | None = None,
     eval_steps: int | None = None,
     checkpoint_steps: int | None = None,
-    checkpoint_dir: pathlib.Path | None = None,
-    log_file: pathlib.Path | None = None,
+    checkpoint_dir: str | None = None,
+    log_file: str | None = None,
 ) -> TrainedModelConfig:
     """Return the configuration for the model."""
     if (config := MODELS.get(model_type)) is None:
@@ -298,9 +301,9 @@ def config_from(
     if checkpoint_steps is not None:
         train_config_updates["checkpoint_steps"] = checkpoint_steps
     if checkpoint_dir is not None:
-        train_config_updates["checkpoint_dir"] = pathlib.Path(checkpoint_dir)
+        train_config_updates["checkpoint_dir"] = checkpoint_dir
     if log_file is not None:
-        train_config_updates["log_file"] = pathlib.Path(log_file)
+        train_config_updates["log_file"] = log_file
     return TrainedModelConfig(
         model_name=config.model_name,
         model_config=dataclasses.replace(
