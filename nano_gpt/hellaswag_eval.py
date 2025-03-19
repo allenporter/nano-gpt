@@ -103,5 +103,5 @@ def evaluate(
                 logits, loss = model(tokens)
             pred_norm = get_likely_row(tokens, mask, logits)
         result.add_result(pred_norm == example.label)
-        _LOGGER.debug("hellaswag: %s", result.log_record().message())
+        _LOGGER.debug("hellaswag: %s", result.log_record())
     return result

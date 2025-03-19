@@ -124,7 +124,7 @@ class GPT(nn.Module):
 
         # Share weights for input and output embeddings. This is about 30% of
         # the model weights.
-        self.transformer.wte.weight = self.lm_head.weight  # type: ignore[union-attr]
+        self.transformer.wte.weight = self.lm_head.weight
         self.apply(self._init_weights)
 
     def _init_weights(self, module: nn.Module) -> None:

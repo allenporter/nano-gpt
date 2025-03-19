@@ -130,6 +130,7 @@ def _trained_model_config_dict_from_args(args: Any) -> dict[str, Any]:
             "eval_num_samples",
             "checkpoint_steps",
             "checkpoint_dir",
+            "log_file",
         }
         if (value := getattr(args, key, None)) is not None
     }
@@ -169,7 +170,7 @@ def model_from_args(
         model_config = trained_model_config.model_config
         _LOGGER.debug("initializing model from config: %s", model_config)
         model = GPT(model_config, tokenizer=tokenizer)
-    _LOGGER.info(f"Trained model config: %s", trained_model_config)
+    _LOGGER.info("Trained model config: %s", trained_model_config)
     if args.device is None:
         args.device = get_device()
     model.to(args.device)

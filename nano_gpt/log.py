@@ -16,6 +16,7 @@ class LogRecord(ABC):
     log_type: str
     data: dict[str, Any]
 
+    @property
     def message(self) -> str:
         """String representation of the data."""
         return " | ".join(f"{key}: {value}" for key, value in self.data.items())
@@ -39,11 +40,14 @@ class LogFile(TrainLog):
     def __init__(self, log_file: pathlib.Path) -> None:
         """Initialize the train logger."""
         self.log_file = log_file
+        self.log_file.parent.mkdir(parents=True, exist_ok=True)
+        self.log_file.unlink(missing_ok=True)
 
     def log(self, message: LogRecord) -> None:
         """Log a message."""
         with self.log_file.open("a") as f:
-            f.write(message.message() + "\n")
+            f.write(str(message))
+            f.write("\n")
             f.flush()
 
 
@@ -52,7 +56,7 @@ class LogStdout(TrainLog):
 
     def log(self, message: LogRecord) -> None:
         """Log a message."""
-        print(message.message())
+        print(str(message))
 
 
 class LogMulti(TrainLog):

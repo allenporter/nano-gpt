@@ -298,9 +298,9 @@ def config_from(
     if checkpoint_steps is not None:
         train_config_updates["checkpoint_steps"] = checkpoint_steps
     if checkpoint_dir is not None:
-        train_config_updates["checkpoint_dir"] = checkpoint_dir
+        train_config_updates["checkpoint_dir"] = pathlib.Path(checkpoint_dir)
     if log_file is not None:
-        train_config_updates["log_file"] = log_file
+        train_config_updates["log_file"] = pathlib.Path(log_file)
     return TrainedModelConfig(
         model_name=config.model_name,
         model_config=dataclasses.replace(

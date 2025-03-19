@@ -6,7 +6,6 @@ from dataclasses import dataclass
 import logging
 import math
 import os
-import pathlib
 import time
 from typing import Any
 
@@ -58,7 +57,7 @@ class ValStats:
             log_type="val",
             data={
                 "step": self.step,
-                "loss": self.loss_accum,
+                "loss": f"{self.loss_accum:0.4f}",
             },
         )
 
@@ -246,9 +245,7 @@ def train(
             and worker_state.is_primary
             and config.checkpoint_dir is not None
         ):
-            checkpoint_path = (
-                pathlib.Path(config.checkpoint_dir) / f"checkpoint_{step}.pt"
-            )
+            checkpoint_path = config.checkpoint_dir / f"checkpoint_{step}.pt"
             checkpoint: Checkpoint = Checkpoint(
                 model_state_dict=raw_model.state_dict(),
                 config=raw_model.config,
@@ -341,5 +338,5 @@ def train(
         if worker_state.is_cuda:
             torch.cuda.synchronize()
 
-        stats.end_step(loss_accum, norm)
+        stats.end_step(loss_accum, norm.item())
         log.log(stats.log_record())

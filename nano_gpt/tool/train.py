@@ -62,6 +62,7 @@ dataset:
 import argparse
 import logging
 from collections.abc import Iterable
+import datetime
 
 import torch
 
@@ -128,7 +129,9 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
     args.add_argument(
         "--log-file",
         type=str,
-        default="train.log",
+        default="train_{now}.log".format(
+            now=datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        ),
         help="The path to the log file.",
     )
 
