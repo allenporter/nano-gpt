@@ -148,9 +148,10 @@ def model_from_args(
         _LOGGER.info("loading weights from pretrained gpt: %s" % args.pretrained)
         model = GPT.from_pretrained(args.pretrained, tokenizer=tokenizer)
     elif checkpoint is not None:
-        _LOGGER.debug("initializing model from config: %s", checkpoint.config)
+        _LOGGER.debug("initializing model from checkpoint: %s", checkpoint.config)
         model = GPT(checkpoint.config, tokenizer=tokenizer)
         model.load_state_dict(checkpoint.model_state_dict)
+        model_config = checkpoint.config
         train_config = dataclasses.replace(
             checkpoint.train_config,
             **_trained_model_config_dict_from_args(args),
@@ -168,6 +169,7 @@ def model_from_args(
         model_config = trained_model_config.model_config
         _LOGGER.debug("initializing model from config: %s", model_config)
         model = GPT(model_config, tokenizer=tokenizer)
+    _LOGGER.info(f"Trained model config: %s", trained_model_config)
     if args.device is None:
         args.device = get_device()
     model.to(args.device)

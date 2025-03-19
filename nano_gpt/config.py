@@ -38,7 +38,7 @@ class GPTConfig:
     block_size: int = BLOCK_SIZE
     """The maximum context length."""
 
-    vocab_size: int = VOCAB_SIZE
+    vocab_size: int = NICE_VOCAB_SIZE
     """The size of the vocabulary."""
 
     n_layer: int = 12

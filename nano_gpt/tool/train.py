@@ -153,6 +153,7 @@ def run(args: argparse.Namespace) -> int:
             raise ValueError("No trainable model configuration found")
 
         dataset_config = dataset_config_from_args(args, checkpoint)
+        _LOGGER.info(f"Dataset config: {dataset_config}")
 
     worker_state = WorkerState(args.device)
     _LOGGER.info("Worker state: %s", worker_state)
