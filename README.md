@@ -145,23 +145,3 @@ torchrun --standalone --nproc_per_node=8 `which nano-gpt` train ...
 ## Additional details
 
 This project is managed with [scruft](https://github.com/allenporter/scruft)
-
-
-## Work Plan
-
-Additional features to add:
-- [x] Add DDP in train loop
-- [x] Make dataset chunk coding respect rank
-- [x] Add tests for chunked rank
-- [x] Fix chunk_input performance
-- [x] hellaswag every N runs of training
-- [x] support checkpointing model
-- [x] support reading checkpoints for sampling
-- [x] support reading checkpoints for eval
-- [x] support reading checkpoints for training
-- [x] log performance stats to disk
-- [x] ability to reset validation or not cycle
-- [x] validation set in eval command
-- [x] validation set in train command
-- [ ] plot baseline of gpt2
-- [ ] plot results from performance log
