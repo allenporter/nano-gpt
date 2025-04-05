@@ -7,6 +7,7 @@ This is the work log for preparing for a legit training run.
 ```
 sudo snap install astral-uv --classic
 uv venv --python=3.11
+# Note: This should probably hold the systems current pytorch
 uv pip install -r requirements_dev.txt
 source .venv/bin/activate
 ```
