@@ -56,6 +56,17 @@ class Checkpoint:
     name: str | None = None
     """Name of the checkpoint."""
 
+    @property
+    def model_state_dict_for_inference(self) -> dict[str, Any]:
+        """Return the model state dict for inference."""
+        new_state_dict = {}
+        for k, v in self.model_state_dict.items():
+            if k.startswith('_orig_mod.'):
+                new_state_dict[k[len('_orig_mod.'):]] = v
+            else:
+                new_state_dict[k] = v
+        return new_state_dict
+
 
 def save_checkpoint(
     checkpoint: Checkpoint,
@@ -69,11 +80,11 @@ def save_checkpoint(
     _LOGGER.debug("Checkpoint saved")
 
 
-def load_checkpoint(checkpoint_path: pathlib.Path) -> Checkpoint:
+def load_checkpoint(checkpoint_path: pathlib.Path, device: str | None = None) -> Checkpoint:
     """Load the model from disk."""
     if not checkpoint_path.exists():
         raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_path}")
-    checkpoint_dict = torch.load(str(checkpoint_path))
+    checkpoint_dict = torch.load(str(checkpoint_path), map_location=device)
     train_config_values = checkpoint_dict["train_config"]
     # The training starting step gets updated to the step at which the checkpoint was saved
     train_config_values["step"] = checkpoint_dict["step"]

@@ -86,6 +86,7 @@ def run(args: argparse.Namespace) -> int:
 
         model, _, _ = model_from_args(args, checkpoint)
 
+    model.to(args.device)
     model.eval()
 
     print(args.text)

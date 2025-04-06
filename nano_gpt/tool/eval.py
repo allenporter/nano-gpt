@@ -87,6 +87,7 @@ def run(args: argparse.Namespace) -> int:
         eval_config = eval_config_from_args(args, checkpoint)
         _LOGGER.info(f"Eval config: {eval_config}")
         model, tokenizer, _ = model_from_args(args, checkpoint)
+        model.to(args.device)
         model.eval()
 
         if eval_config.validation_steps:

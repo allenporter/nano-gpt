@@ -119,7 +119,7 @@ def load_checkpoint_context(args: Any) -> Generator[Checkpoint | None, None, Non
     if args.checkpoint is not None:
         checkpoint_path = pathlib.Path(args.checkpoint)
         _LOGGER.info("Restoring from checkpoint: %s", checkpoint_path)
-        yield load_checkpoint(checkpoint_path)
+        yield load_checkpoint(checkpoint_path, args.device)
     else:
         yield None
 
@@ -159,7 +159,7 @@ def model_from_args(
     elif checkpoint is not None:
         _LOGGER.debug("initializing model from checkpoint: %s", checkpoint.config)
         model = GPT(checkpoint.config, tokenizer=tokenizer)
-        model.load_state_dict(checkpoint.model_state_dict)
+        model.load_state_dict(checkpoint.model_state_dict_for_inference)
         model_config = checkpoint.config
         train_config = dataclasses.replace(
             checkpoint.train_config,
@@ -194,7 +194,7 @@ def model_from_args(
         else:
             _LOGGER.debug("Not compiling model")
     else:
-        _LOGGER.debug("Model will not be compiled")
+        _LOGGER.debug("Model will not be compiled (%s)", args.device)
 
     seed: int | None = None
     if (
