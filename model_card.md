@@ -16,7 +16,7 @@ metrics:
 
 This model is a reproduction of gpt2 following Andrej Karpathy's GPT tutorial series.
 
-The model was trained using the [nano-gpt[(https://github.com/allenporter/nano-gpt/) library
+The model was trained using the [nano-gpt](https://github.com/allenporter/nano-gpt/) library
 which follows the pattern from Karpathy's excellent content, with some additional
 packaging and infrastructure work to make it more maintainable and reusable.
 
