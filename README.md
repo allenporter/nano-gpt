@@ -187,7 +187,7 @@ evaluation steps to evaluate the entire dataset for future runs.
 This is an example of sampling from the trained model checkpoint after 10B tokens.
 
 ```bash
-$ nano-gpt sample --checkpoint=./checkpoint_019072.bin --device=mps        
+$ nano-gpt sample --checkpoint=./checkpoint_019072.bin --device=mps
 > Hello, I'm a language model, you're doing your application, I've put your main program and you want to model. Here are some things
 > Hello, I'm a language model, so let's have a look at a few very old and popular dialects with some basic information about some of
 > Hello, I'm a language model, but I also use a number of core vocabulary from the Python language and some data structures from
@@ -197,12 +197,26 @@ the web to
 ```
 ## Export
 
-You can export a safetensors model from the pytorch checkpoint:
+You can export a safetensors model from the pytorch checkpoint. This will create
+a `model.safetensors` file and `config.json` in the export directory:
 
 ```bash
 $ nano-gpt export --checkpoint ./checkpoint_019072.bin --export-dir export --device=cpu
-$ jq '.n_ctx' export/config.json 
+$ jq '.n_ctx' export/config.json
 1024
+```
+
+This export is written in the same format as the OpenAI GPT2 export and can be
+used with the `--pretrained` command line flag:
+
+```bash
+$ nano-gpt sample --pretrained=./export
+> Hello, I'm a language model, you're doing your application, I've put your main program and you want to model. Here are some things
+> Hello, I'm a language model, so let's have a look at a few very old and popular dialects with some basic information about some of
+> Hello, I'm a language model, but I also use a number of core vocabulary from the Python language and some data structures from
+the web to
+> Hello, I'm a language model, so this is about building a language to help my students to express themselves in all possible situations when they are in
+> Hello, I'm a language model, who wrote my first 'hello' and never used it, but my first 'hello' can't be in
 ```
 
 ## Additional details

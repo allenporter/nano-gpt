@@ -11,6 +11,7 @@ import torch
 import safetensors.torch as st
 
 from .config import GPTConfig, TrainConfig, DatasetConfig, EvalConfig, SampleConfig
+from .model import PRETRAINED_TRANSPOSED_WEIGHTS
 
 __all__ = [
     "Checkpoint",
@@ -125,9 +126,18 @@ def export_checkpoint(
         "format": "pt",
         "model_name": checkpoint.name or "gpt2",
     }
-    loaded = {
-        k: v.contiguous() for k, v in checkpoint.model_state_dict_for_inference.items()
-    }
+    original_state = checkpoint.model_state_dict_for_inference
+    # Put the weights in the format expected by GPT2LMHeadModel. See the
+    # code in model.py which transposes the weights which is the inverse of
+    # this operation.
+    loaded = {}
+    for k, v in original_state.items():
+        if any(k.endswith(w) for w in PRETRAINED_TRANSPOSED_WEIGHTS):
+            with torch.no_grad():
+                loaded[k] = v.t().contiguous()
+        else:
+            loaded[k] = v.contiguous()
+
     model_config = dataclasses.asdict(checkpoint.config)
     config = {
         "model_type": "gpt2",
@@ -169,6 +179,10 @@ def export_checkpoint(
     for k, pt_tensor in checkpoint.model_state_dict_for_inference.items():
         _LOGGER.debug("Verifying tensor %s", k)
         sf_tensor = reloaded[k]
-        if not torch.equal(pt_tensor, sf_tensor):
-            raise RuntimeError(f"The output tensors do not match for key {k}")
+        if any(k.endswith(w) for w in PRETRAINED_TRANSPOSED_WEIGHTS):
+            if not torch.equal(pt_tensor.t(), sf_tensor):
+                raise RuntimeError(f"The output tensors do not match for key {k}")
+        else:
+            if not torch.equal(pt_tensor, sf_tensor):
+                raise RuntimeError(f"The output tensors do not match for key {k}")
     _LOGGER.info("All tensors match")

@@ -3,6 +3,7 @@
 import dataclasses
 from dataclasses import dataclass
 import enum
+import json
 import logging
 import pathlib
 from typing import Protocol, Any
@@ -180,7 +181,7 @@ class TrainConfig:
         """Minimum learning rate."""
         return self.max_lr * self.min_lr_ratio
 
-    def grad_accum_steps(self, world_size: int ) -> int:
+    def grad_accum_steps(self, world_size: int) -> int:
         """Number of gradient accumulation steps."""
         return self.total_batch_size // (self.chunk_token_size * world_size)
 
@@ -189,7 +190,9 @@ class TrainConfig:
         _LOGGER.info("Token batch size: %s", self.micro_batch_size)
         _LOGGER.info("Sequence length: %s", self.sequence_length)
         _LOGGER.info("Total token batch size: %s", self.total_batch_size)
-        _LOGGER.info("Gradient accumulation steps: %s", self.grad_accum_steps(world_size))
+        _LOGGER.info(
+            "Gradient accumulation steps: %s", self.grad_accum_steps(world_size)
+        )
 
 
 @dataclass(frozen=True)
@@ -325,6 +328,19 @@ def model_config_from_pretrained(model_type: str) -> GPTConfig:
         raise ValueError(f"Unknown model type: {model_type}")
     config = config_from(model_type)
     return config.model_config
+
+
+def model_config_from_export(export_path: pathlib.Path) -> GPTConfig:
+    """Return the configuration for the pretrained model."""
+    model_config_path = export_path / "config.json"
+    data = json.loads(model_config_path.read_text())
+    return GPTConfig(
+        block_size=data["block_size"],
+        vocab_size=data["vocab_size"],
+        n_layer=data["n_layer"],
+        n_head=data["n_head"],
+        n_embd=data["n_embd"],
+    )
 
 
 class LoadDataset(Protocol):

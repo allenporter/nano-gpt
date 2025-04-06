@@ -4,8 +4,8 @@ This is a thin wrapper around the HuggingFace transformers library and uses
 the approach from the GPT-2/GPT-3 papers.
 """
 
-from typing import cast
 import logging
+from typing import cast, Any
 
 import torch
 import torch.nn as nn
@@ -13,13 +13,22 @@ from torch.nn import functional as F
 from transformers import GPT2LMHeadModel
 
 from .tokenizer import Tokenizer
-from .config import GPTConfig, model_config_from_pretrained
+from .config import GPTConfig
 
 _LOGGER = logging.getLogger(__name__)
 
 __all__ = [
     "GPT",
     "sample",
+]
+
+# The openai checkpoints use a "Conv1D" module, but we only want to use a vanilla Linear
+# this means that we have to transpose these weights when we import them
+PRETRAINED_TRANSPOSED_WEIGHTS = [
+    "attn.c_attn.weight",
+    "attn.c_proj.weight",
+    "mlp.c_fc.weight",
+    "mlp.c_proj.weight",
 ]
 
 
@@ -211,10 +220,14 @@ class GPT(nn.Module):
         return logits, loss
 
     @classmethod
-    def from_pretrained(cls, model_type: str, tokenizer: Tokenizer) -> "GPT":
+    def from_pretrained(
+        cls,
+        pretrained_model_name_or_path: str,
+        tokenizer: Tokenizer,
+        model_config: GPTConfig,
+        **kwargs: Any,
+    ) -> "GPT":
         """Load the GPT from the pretrained model."""
-        _LOGGER.info("loading weights from pretrained gpt: %s" % model_type)
-        model_config = model_config_from_pretrained(model_type)
         model = GPT(model_config, tokenizer=tokenizer)
         sd = model.state_dict()
         sd_keys = [
@@ -222,7 +235,9 @@ class GPT(nn.Module):
         ]  # discard this mask / buffer, not a param
 
         # init a huggingface/transformers model
-        model_hf = GPT2LMHeadModel.from_pretrained(model_type)
+        model_hf = GPT2LMHeadModel.from_pretrained(
+            pretrained_model_name_or_path, **kwargs
+        )
         sd_hf = model_hf.state_dict()
 
         # copy while ensuring all of the parameters are aligned and match in names and shapes
@@ -230,18 +245,8 @@ class GPT(nn.Module):
         sd_keys_hf = [
             k for k in sd_keys_hf if not k.endswith(".attn.masked_bias")
         ]  # ignore these, just a buffer
-        sd_keys_hf = [
-            k for k in sd_keys_hf if not k.endswith(".attn.bias")
-        ]  # same, just the mask (buffer)
-        PRETRAINED_TRANSPOSED_WEIGHTS = [
-            "attn.c_attn.weight",
-            "attn.c_proj.weight",
-            "mlp.c_fc.weight",
-            "mlp.c_proj.weight",
-        ]
-
-        # basically the openai checkpoints use a "Conv1D" module, but we only want to use a vanilla Linear
-        # this means that we have to transpose these weights when we import them
+        sd_keys_hf = [k for k in sd_keys_hf if not k.endswith(".attn.bias")]
+        # Transpose weights
         assert len(sd_keys_hf) == len(
             sd_keys
         ), f"mismatched keys: {len(sd_keys_hf)} != {len(sd_keys)}"

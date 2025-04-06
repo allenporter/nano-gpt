@@ -21,12 +21,13 @@ import torch
 from nano_gpt.checkpoint import load_checkpoint, Checkpoint
 from nano_gpt.config import (
     MODELS,
-    PRETRAINED,
     config_from,
     TrainedModelConfig,
     EvalConfig,
     SampleConfig,
     DatasetConfig,
+    model_config_from_pretrained,
+    model_config_from_export,
 )
 from nano_gpt.datasets import TRAIN_DATASETS
 from nano_gpt.devices import get_device
@@ -48,7 +49,6 @@ def create_model_arguments(
     group.add_argument(
         "--pretrained",
         type=str,
-        choices=sorted(PRETRAINED),
         help="The name of the pretrained model to use.",
     )
     group.add_argument(
@@ -155,7 +155,22 @@ def model_from_args(
         if checkpoint is not None:
             raise ValueError("Cannot specify both --pretrained and --checkpoint")
         _LOGGER.info("loading weights from pretrained gpt: %s" % args.pretrained)
-        model = GPT.from_pretrained(args.pretrained, tokenizer=tokenizer)
+        pretrained_args: dict[str, Any] = {}
+        if args.pretrained.startswith("./") or args.pretrained.startswith("/"):
+            # If the pretrained model is a local path, we need to load it from the local
+            model_config = model_config_from_export(pathlib.Path(args.pretrained))
+            pretrained_args = {
+                "local_files_only": True,
+            }
+        else:
+            model_config = model_config_from_pretrained(args.pretrained)
+
+        model = GPT.from_pretrained(
+            args.pretrained,
+            tokenizer=tokenizer,
+            model_config=model_config,
+            **pretrained_args,
+        )
     elif checkpoint is not None:
         _LOGGER.debug("initializing model from checkpoint: %s", checkpoint.config)
         model = GPT(checkpoint.config, tokenizer=tokenizer)
