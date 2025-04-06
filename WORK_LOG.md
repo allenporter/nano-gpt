@@ -48,7 +48,7 @@ We'll increase the micro batch size for our beefy machine to avoid the
 need for any gradient accumulation.
 
 ```bash
-$ torchrun --standalone --nproc_per_node=8 `which nano-gpt` train --dataset=${DATASET} --micro-batch-size=64
+$ torchrun --standalone --nproc_per_node=8 `which nano-gpt` train --dataset=${DATASET} --micro-batch-size=64 --hellaswag_samples=250
 ```
 
 Run appears to take 390ms per step.
