@@ -178,6 +178,10 @@ You can view the results of the training run using the notebook
 
 ![Screenshot Training Log](artifacts/train-log.png)
 
+Note that in this training run, hellaswag was not evaluated on the entire dataset
+and so the results are higher than expected. I recommend adjusting the hellaswag
+evaluation steps to evaluate the entire dataset for future runs.
+
 ## Sampling from a checkpoint
 
 This is an example of sampling from the trained model chekpoint after 10B tokens.
