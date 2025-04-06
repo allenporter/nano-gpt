@@ -56,7 +56,7 @@ def checkpoint_data(minimal_model: GPT) -> Checkpoint:
 def test_save_and_load_checkpoint(checkpoint_data: Checkpoint) -> None:
     """Test saving and loading a checkpoint."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        checkpoint_path = pathlib.Path(tmpdir) / "test_checkpoint.pt"
+        checkpoint_path = pathlib.Path(tmpdir) / "test_checkpoint.bin"
 
         # Save checkpoint
         save_checkpoint(checkpoint_data, checkpoint_path)
@@ -95,7 +95,7 @@ def test_save_and_load_model_state(
 ) -> None:
     """Test that model state is preserved when saving and loading."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        checkpoint_path = pathlib.Path(tmpdir) / "test_checkpoint.pt"
+        checkpoint_path = pathlib.Path(tmpdir) / "test_checkpoint.bin"
 
         # Create a checkpoint with the model state
         checkpoint = Checkpoint(

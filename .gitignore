@@ -151,5 +151,5 @@ dmypy.json
 dataset_cache
 checkpoints
 train_*.log
-checkpoint_*.pt
+checkpoint_*.bin
 !artifacts/train_*.log
