@@ -6,7 +6,7 @@ import logging
 import sys
 from pathlib import Path
 
-from . import sample, train, eval, prepare_dataset
+from . import sample, train, eval, prepare_dataset, export
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -28,6 +28,11 @@ def get_base_arg_parser() -> argparse.ArgumentParser:
     eval.create_arguments(subparsers.add_parser("eval", description="Evaluate a model"))
     prepare_dataset.create_arguments(
         subparsers.add_parser("prepare_dataset", description="Evaluate a model")
+    )
+    export.create_arguments(
+        subparsers.add_parser(
+            "export", description="Export a model checkpoint to safetensors"
+        )
     )
     return parser
 

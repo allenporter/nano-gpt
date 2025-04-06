@@ -195,7 +195,15 @@ the web to
 > Hello, I'm a language model, so this is about building a language to help my students to express themselves in all possible situations when they are in
 > Hello, I'm a language model, who wrote my first 'hello' and never used it, but my first 'hello' can't be in
 ```
+## Export
 
+You can export a safetensors model from the pytorch checkpoint:
+
+```bash
+$ nano-gpt export --checkpoint ./checkpoint_019072.bin --export-dir export --device=cpu
+$ jq '.n_ctx' export/config.json 
+1024
+```
 
 ## Additional details
 

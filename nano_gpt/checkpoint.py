@@ -2,11 +2,13 @@
 
 import dataclasses
 from dataclasses import dataclass
+import json
+import logging
 import pathlib
 from typing import Any
-import logging
 
 import torch
+import safetensors.torch as st
 
 from .config import GPTConfig, TrainConfig, DatasetConfig, EvalConfig, SampleConfig
 
@@ -61,8 +63,8 @@ class Checkpoint:
         """Return the model state dict for inference."""
         new_state_dict = {}
         for k, v in self.model_state_dict.items():
-            if k.startswith('_orig_mod.'):
-                new_state_dict[k[len('_orig_mod.'):]] = v
+            if k.startswith("_orig_mod."):
+                new_state_dict[k[len("_orig_mod.") :]] = v
             else:
                 new_state_dict[k] = v
         return new_state_dict
@@ -80,7 +82,9 @@ def save_checkpoint(
     _LOGGER.debug("Checkpoint saved")
 
 
-def load_checkpoint(checkpoint_path: pathlib.Path, device: str | None = None) -> Checkpoint:
+def load_checkpoint(
+    checkpoint_path: pathlib.Path, device: str | None = None
+) -> Checkpoint:
     """Load the model from disk."""
     if not checkpoint_path.exists():
         raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_path}")
@@ -100,3 +104,71 @@ def load_checkpoint(checkpoint_path: pathlib.Path, device: str | None = None) ->
         eval_config=EvalConfig(**checkpoint_dict["eval_config"]),
         sample_config=SampleConfig(**checkpoint_dict["sample_config"]),
     )
+
+
+def export_checkpoint(
+    checkpoint: Checkpoint,
+    checkpoint_path: pathlib.Path,
+    export_dir: pathlib.Path,
+) -> None:
+    """Export the checkpoint to safetensors format."""
+    if not export_dir.exists():
+        export_dir.mkdir(parents=True, exist_ok=True)
+    export_path = export_dir / "model.safetensors"
+    config_path = export_dir / "config.json"
+    if export_path.exists():
+        raise FileExistsError(f"Model export already exists: {export_path}")
+    if config_path.exists():
+        raise FileExistsError(f"Config file already exists: {config_path}")
+    _LOGGER.info("Exporting checkpoint to %s", export_path)
+    metadata = {
+        "format": "pt",
+        "model_name": checkpoint.name or "gpt2",
+    }
+    loaded = {
+        k: v.contiguous() for k, v in checkpoint.model_state_dict_for_inference.items()
+    }
+    model_config = dataclasses.asdict(checkpoint.config)
+    config = {
+        "model_type": "gpt2",
+        "architectures": ["GPT2LMHeadModel"],
+        "n_ctx": model_config["block_size"],
+        **model_config,
+        "val_loss_accum": checkpoint.val_loss_accum,
+        "train_config": dataclasses.asdict(checkpoint.train_config),
+    }
+    if checkpoint.dataset_config:
+        config["dataset_config"] = dataclasses.asdict(checkpoint.dataset_config)
+    if checkpoint.eval_config or checkpoint.sample_config:
+        config["task_specific_params"] = {}
+        if checkpoint.eval_config:
+            config["task_specific_params"]["eval_config"] = dataclasses.asdict(
+                checkpoint.eval_config
+            )
+        if checkpoint.sample_config:
+            config["task_specific_params"]["sample_config"] = dataclasses.asdict(
+                checkpoint.sample_config
+            )
+
+    st.save_file(loaded, str(export_path), metadata=metadata)
+    config_path.write_text(json.dumps(config, indent=4))
+    _LOGGER.debug("Checkpoint exported")
+
+    _LOGGER.info("Verifying exported checkpoint")
+    pt_size = checkpoint_path.stat().st_size
+    size_diff = abs(pt_size - export_path.stat().st_size)
+    diff_pct = (1.0 * size_diff) / pt_size
+    _LOGGER.info("Exported file size: %d bytes", export_path.stat().st_size)
+    _LOGGER.info("Original file size: %d bytes", pt_size)
+    _LOGGER.info("Difference: %d bytes (%.2f%%)", size_diff, diff_pct * 100)
+
+    reloaded = st.load_file(str(export_path))
+    _LOGGER.info(
+        "Verifying tensors (%d tensors)", len(checkpoint.model_state_dict_for_inference)
+    )
+    for k, pt_tensor in checkpoint.model_state_dict_for_inference.items():
+        _LOGGER.debug("Verifying tensor %s", k)
+        sf_tensor = reloaded[k]
+        if not torch.equal(pt_tensor, sf_tensor):
+            raise RuntimeError(f"The output tensors do not match for key {k}")
+    _LOGGER.info("All tensors match")
