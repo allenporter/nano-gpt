@@ -52,6 +52,9 @@ section contains a high level overview of the key components and any additions.
 - Model evaluation on benchmark datasets
 - Support for different sampling strategies
 
+## Released Model
+
+My model trained with this library is available on huggingface at [allenporter/gp2](https://huggingface.co/allenporter/gpt2)
 
 ## Environment Setup
 
