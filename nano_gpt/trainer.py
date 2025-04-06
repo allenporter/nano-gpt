@@ -297,8 +297,8 @@ def train(
             )
             save_checkpoint(checkpoint, checkpoint_path)
         if (
-            (eval_step or last_step)
-            and worker_state.is_primary
+            step != 0
+            and (eval_step or last_step)
             and hellaswag_loader is not None
             and eval_config is not None
             and eval_config.hellaswag_samples
@@ -330,7 +330,8 @@ def train(
                     total=int(num_total.item()),
                     correct=int(num_correct_norm.item()),
                 )
-            log.log(hellaswag_result.log_record())
+            if worker_state.is_primary:
+                log.log(hellaswag_result.log_record())
         if (
             step > 0
             and eval_step
