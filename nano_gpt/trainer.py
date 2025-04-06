@@ -228,7 +228,7 @@ def train(
     specified in the config. It will also evaluate the model on the validation set
     and save checkpoints.
     """
-    config.log_info()
+    config.log_info(worker_state.ddp_world_size)
     log = create_log(
         pathlib.Path(config.log_file) if config.log_file else None, log_stdout=True
     )
@@ -266,7 +266,8 @@ def train(
                     backward=False,
                 )
             if worker_state.ddp:
-                dist.all_reduce(torch.tensor(val_loss_accum), op=dist.ReduceOp.AVG)
+                vall_loss_tensor = torch.tensor(val_loss_accum, device=worker_state.device)
+                dist.all_reduce(vall_loss_tensor, op=dist.ReduceOp.AVG)
             val_stats = ValStats(step=step, loss_accum=val_loss_accum)
             if worker_state.is_primary:
                 log.log(val_stats.log_record())
@@ -356,11 +357,12 @@ def train(
             worker_state,
             "train",
             train_ds,
-            config.grad_accum_steps,
+            config.grad_accum_steps(worker_state.ddp_world_size),
             backward=True,
         )
         if worker_state.ddp:
-            dist.all_reduce(torch.tensor(loss_accum), op=dist.ReduceOp.AVG)
+            loss_tensor = torch.tensor(loss_accum, device=worker_state.device)
+            dist.all_reduce(loss_tensor, op=dist.ReduceOp.AVG)
 
         # Prevent the model from getting large shocks of gradient magnitude
         norm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -374,4 +376,5 @@ def train(
             torch.cuda.synchronize()
 
         stats.end_step(loss_accum, norm.item())
-        log.log(stats.log_record())
+        if worker_state.is_primary:
+            log.log(stats.log_record())

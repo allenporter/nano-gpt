@@ -180,17 +180,16 @@ class TrainConfig:
         """Minimum learning rate."""
         return self.max_lr * self.min_lr_ratio
 
-    @property
-    def grad_accum_steps(self) -> int:
+    def grad_accum_steps(self, world_size: int ) -> int:
         """Number of gradient accumulation steps."""
-        return self.total_batch_size // self.chunk_token_size
+        return self.total_batch_size // (self.chunk_token_size * world_size)
 
-    def log_info(self) -> None:
+    def log_info(self, world_size: int) -> None:
         """String representation."""
         _LOGGER.info("Token batch size: %s", self.micro_batch_size)
         _LOGGER.info("Sequence length: %s", self.sequence_length)
         _LOGGER.info("Total token batch size: %s", self.total_batch_size)
-        _LOGGER.info("Gradient accumulation steps: %s", self.grad_accum_steps)
+        _LOGGER.info("Gradient accumulation steps: %s", self.grad_accum_steps(world_size))
 
 
 @dataclass(frozen=True)

@@ -37,13 +37,20 @@ $ nano-gpt prepare_dataset --dataset=${DATASET} --splits=train,validation
 ```
 
 The tokenization step takes about 15 seconds per shard on a lambda labs beefy
-machine, so about 25 minutes in total.
+machine, so about 25 minutes in total. The process currently appears to be I/O
+bound reading/writing the shard, so possible future improvement there.
 
 ### Train
 
 Checkpoints will be saved in `checkpoints/` by default, every 5k steps.
 
+We'll increase the micro batch size for our beefy machine to avoid the
+need for any gradient accumulation.
 
 ```bash
-torchrun --standalone --nproc_per_node=8 `which nano-gpt` train --dataset=${DATASET}
+$ torchrun --standalone --nproc_per_node=8 `which nano-gpt` train --dataset=${DATASET} --micro-batch-size=64
 ```
+
+Run appears to take 390ms per step.
+10B tokens / 500k tokens per step = 20k steps
+20k * 390ms = 2.16 hours
