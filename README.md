@@ -55,16 +55,42 @@ section contains a high level overview of the key components and any additions.
 
 ## Environment Setup
 
-Install pre-requisites
+It is recommended to use virtual enviroments for installing python packages
+such as `uv`. Here is an example for how to install uv and create an environment:
 
 ```bash
 $ sudo snap install astral-uv --classic
 $ uv venv --python3.13
 $ source .venv/bin/activate
+```
+
+The following sections give examples for how to setup the package either for
+using the command line or for local development.
+
+### From pypi
+
+This will install from the [nano-gpt](https://pypi.org/project/nano-gpt/)
+project from pypi:
+
+```bash
+$ uv pip install nano-gpt
+```
+
+### Local development
+
+These are the steps to use for local development. You'll first need to
+clone the [git repo](https://github.com/allenporter/nano-gpt/) then you can
+install the local project:
+
+```bash
 $ uv pip install -r requirements_dev.txt
 ```
 
-When using a lambda labs machine to preserve the python install:
+### Special Envirments
+
+You may come across machines that already have pytorch installed, e.g. such
+as from a GPU hosting provider. You can create a virtual environment like this
+to perserve the system packages:
 
 ```bash
 $ python3 -m venv venv --system-site-packages
@@ -72,8 +98,8 @@ $ source venv/bin/activate
 $ pip install -r requirements_dev.txt
 ```
 
-When using a jetson orin with the pytorch container `dustynv/pytorch:2.1-r36.2.0`
-you can setup with these commands:
+Another example is when using a jetson orin with the pytorch
+container `dustynv/pytorch:2.1-r36.2.0` you can setup with these commands:
 
 ```bash
 $ apt install python3.10-venv
@@ -83,8 +109,11 @@ $ pip install -r requirements_dev.txt
 $ pip install "numpy<2"
 $ pip install /opt/torch-2.1.0-cp310-cp310-linux_aarch64.whl
 ```
-That will take about 8 days to train, by the way.
 
+That will take about 8 days to train, by the way. I'd only use this for
+inference or for local testing.
+
+### Verify setup
 
 Verify that you have the accelerator you expect:
 ```
