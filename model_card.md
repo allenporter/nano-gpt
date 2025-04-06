@@ -5,8 +5,10 @@ license: mit
 library_name: pytorch
 tags:
 - nano-gpt
+- pytorch
+- safetensors
 datasets:
-- fineweb-edu
+- HuggingFaceFW/fineweb-edu
 metrics:
 - accuracy
 ---
@@ -14,7 +16,8 @@ metrics:
 
 <!-- Provide a quick summary of what the model is/does. -->
 
-This model is a reproduction of gpt2 following Andrej Karpathy's GPT tutorial series.
+This model is a reproduction of gpt2 following Andrej Karpathy's GPT [tutorial series](https://www.youtube.com/watch?v=VMj-3S1tku0&list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ)
+and the original [GPT-2 Paper](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)
 
 The model was trained using the [nano-gpt](https://github.com/allenporter/nano-gpt/) library
 which follows the pattern from Karpathy's excellent content, with some additional
@@ -26,6 +29,11 @@ packaging and infrastructure work to make it more maintainable and reusable.
 
 GPT-2 is a transformers model pretrained on a large corpus of english only text
 with no labeling.  This is the smallest version of GPT-2, with 124M parameters.
+
+The model follows the standard GPT-2 architecture with transformer blocks containing:
+  - Multi-head causal self-attention
+  - Layer normalization
+  - MLP blocks with GELU activation
 
 The model was trained using a sample of the FineWeb-EDU using 10B tokens. The
 dataset contains educational web pages.
@@ -80,12 +88,18 @@ from the 10B token sample.
 
 #### Preprocessing
 
-The data was pre-tokenized using the `nano-gpt prepare_dataset` command
-line tool. 
+The model was pre-processed and sharded to make data loading efficient.  The
+dataset was pre-tokenized using GPT-2 tokenizer using the `nano-gpt prepare_dataset`
+command. The file is split into manageable chunks.
 
 #### Training Hyperparameters
 
 - **Training regime:** See `train_config` in `config.json` for the hyper parameters.
+
+The main features of the training process are:
+- Learning rate scheduling with warmup
+- Gradient clipping for stable training
+- Model compilation for improved performance where available
 
 #### Speeds, Sizes, Times
 
@@ -101,6 +115,11 @@ hours.
 
 The model was evaluated using hellaswag dataset. TBD results.
 
+The `nano-gpt train` command has built in support for evaluating against
+the val dataset as well as HellaSwag in between training steps. Every 500 steps
+the model was evaluated against the val dataset, as well as HellaSwag and
+geneated annecdotal samples from each worker.
+
 ## Environmental Impact
 
 <!-- Total emissions (in grams of CO2eq) and additional considerations, such as electricity usage, go here. Edit the suggested text below accordingly -->
@@ -111,3 +130,5 @@ Carbon emissions can be estimated using the [Machine Learning Impact calculator]
 - **Hours used:** 2 hours
 - **Cloud Provider:** Lambda Labs
 - **Compute Region:** Arizona
+- **Power estimate:** 8 GPUs * 0.325 kW/GPU = 2.6 kW.  2.6 kW * 2 hours = 5.2 kWh
+- **CO2 Estimate:** 2.6 pounds of CO2 equivalent assuming 500 lbs CO2e per MWh
