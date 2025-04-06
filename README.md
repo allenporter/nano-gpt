@@ -184,7 +184,7 @@ evaluation steps to evaluate the entire dataset for future runs.
 
 ## Sampling from a checkpoint
 
-This is an example of sampling from the trained model chekpoint after 10B tokens.
+This is an example of sampling from the trained model checkpoint after 10B tokens.
 
 ```bash
 $ nano-gpt sample --checkpoint=./checkpoint_019072.pt --device=mps        
