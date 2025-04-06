@@ -55,7 +55,7 @@ section contains a high level overview of the key components and any additions.
 
 ## Environment Setup
 
-It is recommended to use virtual enviroments for installing python packages
+It is recommended to use virtual environments for installing python packages
 such as `uv`. Here is an example for how to install uv and create an environment:
 
 ```bash
@@ -90,7 +90,7 @@ $ uv pip install -r requirements_dev.txt
 
 You may come across machines that already have pytorch installed, e.g. such
 as from a GPU hosting provider. You can create a virtual environment like this
-to perserve the system packages:
+to preserve the system packages:
 
 ```bash
 $ python3 -m venv venv --system-site-packages
