@@ -78,7 +78,7 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
 
 
 def run(args: argparse.Namespace) -> int:
-    """Run the sample command."""
+    """Run the eval command."""
     torch.set_float32_matmul_precision("high")
     log = create_log(None, log_stdout=True)
 
