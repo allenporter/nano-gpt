@@ -229,9 +229,12 @@ def train(
     and save checkpoints.
     """
     config.log_info(worker_state.ddp_world_size)
-    log = create_log(
-        pathlib.Path(config.log_file) if config.log_file else None, log_stdout=True
-    )
+    if worker_state.is_primary:
+        log = create_log(
+            pathlib.Path(config.log_file) if config.log_file else None, log_stdout=True
+        )
+    else:
+        log = create_log(None, False)
 
     model: nn.Module = raw_model
     tokenizer = raw_model.enc
