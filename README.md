@@ -195,6 +195,7 @@ the web to
 > Hello, I'm a language model, so this is about building a language to help my students to express themselves in all possible situations when they are in
 > Hello, I'm a language model, who wrote my first 'hello' and never used it, but my first 'hello' can't be in
 ```
+
 ## Export
 
 You can export a safetensors model from the pytorch checkpoint. This will create
@@ -211,6 +212,31 @@ used with the `--pretrained` command line flag:
 
 ```bash
 $ nano-gpt sample --pretrained=./export
+> Hello, I'm a language model, you're doing your application, I've put your main program and you want to model. Here are some things
+> Hello, I'm a language model, so let's have a look at a few very old and popular dialects with some basic information about some of
+> Hello, I'm a language model, but I also use a number of core vocabulary from the Python language and some data structures from
+the web to
+> Hello, I'm a language model, so this is about building a language to help my students to express themselves in all possible situations when they are in
+> Hello, I'm a language model, who wrote my first 'hello' and never used it, but my first 'hello' can't be in
+```
+
+## Upload
+
+You can upload your exported model to huggingface and use it like any other
+pretrained model.
+
+```bash
+$ huggingface-cli login
+$ HUGGINGFACE_USER=`huggingface-cli whoami`
+$ echo $HUGGINGFACE_USER
+allenporter
+$ huggingface-cli upload ${HUGGINGFACE_USER}/gpt2 export/ .
+```
+
+This will allow you to load the model from the huggingface repo:
+
+```bash
+$ nano-gpt sample --pretrained=allenporter/gpt2
 > Hello, I'm a language model, you're doing your application, I've put your main program and you want to model. Here are some things
 > Hello, I'm a language model, so let's have a look at a few very old and popular dialects with some basic information about some of
 > Hello, I'm a language model, but I also use a number of core vocabulary from the Python language and some data structures from

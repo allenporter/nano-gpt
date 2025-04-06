@@ -12,11 +12,13 @@ from argparse import ArgumentParser, BooleanOptionalAction
 from collections.abc import Generator
 from contextlib import contextmanager
 import dataclasses
+import json
 import logging
 import pathlib
 from typing import Any, cast
 
 import torch
+from huggingface_hub import HfFileSystem
 
 from nano_gpt.checkpoint import load_checkpoint, Checkpoint
 from nano_gpt.config import (
@@ -27,7 +29,7 @@ from nano_gpt.config import (
     SampleConfig,
     DatasetConfig,
     model_config_from_pretrained,
-    model_config_from_export,
+    model_config_from_dict,
 )
 from nano_gpt.datasets import TRAIN_DATASETS
 from nano_gpt.devices import get_device
@@ -158,13 +160,21 @@ def model_from_args(
         pretrained_args: dict[str, Any] = {}
         if args.pretrained.startswith("./") or args.pretrained.startswith("/"):
             # If the pretrained model is a local path, we need to load it from the local
-            model_config = model_config_from_export(pathlib.Path(args.pretrained))
-            pretrained_args = {
-                "local_files_only": True,
-            }
-        else:
+            local_path = pathlib.Path(args.pretrained)
+            model_config_path = local_path / "config.json"
+            _LOGGER.info("Loading model config from %s", model_config_path)
+            data = json.loads(model_config_path.read_text())
+            model_config = model_config_from_dict(data)
+        elif args.pretrained in MODELS:
+            _LOGGER.info("Loading known model config: %s", args.pretrained)
             model_config = model_config_from_pretrained(args.pretrained)
-
+        else:
+            fs = HfFileSystem()
+            model_config_path = pathlib.Path(args.pretrained) / "/config.json"
+            _LOGGER.info("Loading model config from %s", model_config_path)
+            data = json.loads(fs.read_text(str(model_config_path)))
+            model_config = model_config_from_dict(data)
+        _LOGGER.info("Initializing model from pretrained config: %s", model_config)
         model = GPT.from_pretrained(
             args.pretrained,
             tokenizer=tokenizer,

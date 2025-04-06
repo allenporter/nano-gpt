@@ -3,7 +3,6 @@
 import dataclasses
 from dataclasses import dataclass
 import enum
-import json
 import logging
 import pathlib
 from typing import Protocol, Any
@@ -214,7 +213,7 @@ class Models(enum.Enum):
 
     GPT2_SMALL = TrainedModelConfig(
         "gpt2",  # 124M params
-        GPTConfig(n_layer=12, n_head=12, n_embd=768),
+        GPTConfig(n_layer=12, n_head=12, n_embd=768, vocab_size=VOCAB_SIZE),
         TrainConfig(
             total_batch_size=2**19,  # ~0.5M, in number of tokens
             max_lr=6e-4,
@@ -222,7 +221,7 @@ class Models(enum.Enum):
     )
     GPT2_MEDIUM = TrainedModelConfig(
         "gpt2-medium",  # 350M params
-        GPTConfig(n_layer=24, n_head=16, n_embd=1024),
+        GPTConfig(n_layer=24, n_head=16, n_embd=1024, vocab_size=VOCAB_SIZE),
         TrainConfig(
             total_batch_size=2**19,  # ~0.5M, in number of tokens
             max_lr=3e-4,
@@ -230,7 +229,7 @@ class Models(enum.Enum):
     )
     GPT2_LARGE = TrainedModelConfig(
         "gpt2-large",  # 774M params
-        GPTConfig(n_layer=36, n_head=20, n_embd=1280),
+        GPTConfig(n_layer=36, n_head=20, n_embd=1280, vocab_size=VOCAB_SIZE),
         TrainConfig(
             total_batch_size=2**19,  # ~0.5M, in number of tokens
             max_lr=2.5e-4,
@@ -238,7 +237,7 @@ class Models(enum.Enum):
     )
     GPT2_XL = TrainedModelConfig(
         "gpt2-xl",  # 1558M params
-        GPTConfig(n_layer=48, n_head=25, n_embd=1600),
+        GPTConfig(n_layer=48, n_head=25, n_embd=1600, vocab_size=VOCAB_SIZE),
         TrainConfig(
             total_batch_size=2**20,  #  ~1M, in number of tokens
             max_lr=2e-4,
@@ -248,7 +247,7 @@ class Models(enum.Enum):
     # These are model sizes that were made up for this project
     GPT2_XS = TrainedModelConfig(
         "gpt2-xs",  # 58M params
-        GPTConfig(n_layer=10, n_head=10, n_embd=512),
+        GPTConfig(n_layer=10, n_head=10, n_embd=512, vocab_size=VOCAB_SIZE),
         TrainConfig(
             total_batch_size=2**18,  # ~0.25M, in number of tokens
             max_lr=3e-4,
@@ -256,7 +255,7 @@ class Models(enum.Enum):
     )
     GPT2_XXS = TrainedModelConfig(
         "gpt2-xxs",  # ~3M params
-        GPTConfig(n_layer=4, n_head=4, n_embd=64),
+        GPTConfig(n_layer=4, n_head=4, n_embd=64, vocab_size=VOCAB_SIZE),
         TrainConfig(
             total_batch_size=2**16,  # ~0.065M, in number of tokens
             max_lr=3e-4,
@@ -330,12 +329,13 @@ def model_config_from_pretrained(model_type: str) -> GPTConfig:
     return config.model_config
 
 
-def model_config_from_export(export_path: pathlib.Path) -> GPTConfig:
-    """Return the configuration for the pretrained model."""
-    model_config_path = export_path / "config.json"
-    data = json.loads(model_config_path.read_text())
+def model_config_from_dict(data: dict[str, Any]) -> GPTConfig:
+    """Return the configuration for the pretrained model configuration dict."""
+    block_size = data.get("n_ctx", data.get("block_size"))
+    if not block_size:
+        raise ValueError("Missing block size in model config")
     return GPTConfig(
-        block_size=data["block_size"],
+        block_size=block_size,
         vocab_size=data["vocab_size"],
         n_layer=data["n_layer"],
         n_head=data["n_head"],
