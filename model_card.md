@@ -32,7 +32,7 @@ dataset contains educational web pages.
 
 - **Developed by:** Allen Porter
 
-### Model Sources [optional]
+### Model Sources
 
 <!-- Provide the basic links for the model. -->
 
@@ -78,7 +78,7 @@ from the 10B token sample.
 
 <!-- This relates heavily to the Technical Specifications. Content here should link to that section when it is relevant to the training procedure. -->
 
-#### Preprocessing [optional]
+#### Preprocessing
 
 The data was pre-tokenized using the `nano-gpt prepare_dataset` command
 line tool. 
