@@ -152,3 +152,4 @@ dataset_cache
 checkpoints
 train_*.log
 checkpoint_*.pt
+!artifacts/train_*.log

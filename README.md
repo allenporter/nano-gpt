@@ -114,29 +114,44 @@ So we can
 This example will evaluate hellaswag against the pretrained gpt2:
 
 ```bash
-$ nano-gpt eval --pretrained=gpt2
-Accuracy: 0/1 = 0.0000
-Accuracy: 0/2 = 0.0000
-Accuracy: 1/3 = 0.3333
-Accuracy: 1/4 = 0.2500
-Accuracy: 1/5 = 0.2000
-Accuracy: 1/6 = 0.1667
-Accuracy: 1/7 = 0.1429
-Accuracy: 1/8 = 0.1250
-Accuracy: 1/9 = 0.1111
-Accuracy: 1/10 = 0.1000
-Accuracy: 2/11 = 0.1818
+$ nano-gpt --debug eval --pretrained=gpt2 --validation-steps=0
+DEBUG:nano_gpt.hellaswag_eval:hellaswag: hellaswag: accuracy: 1.0000 | total: 1 | correct: 1
+DEBUG:nano_gpt.hellaswag_eval:hellaswag: hellaswag: accuracy: 0.5000 | total: 2 | correct: 1
+DEBUG:nano_gpt.hellaswag_eval:hellaswag: hellaswag: accuracy: 0.6667 | total: 3 | correct: 2
+DEBUG:nano_gpt.hellaswag_eval:hellaswag: hellaswag: accuracy: 0.5000 | total: 4 | correct: 2
+DEBUG:nano_gpt.hellaswag_eval:hellaswag: hellaswag: accuracy: 0.4000 | total: 5 | correct: 2
+DEBUG:nano_gpt.hellaswag_eval:hellaswag: hellaswag: accuracy: 0.3333 | total: 6 | correct: 2
+DEBUG:nano_gpt.hellaswag_eval:hellaswag: hellaswag: accuracy: 0.2857 | total: 7 | correct: 2
+DEBUG:nano_gpt.hellaswag_eval:hellaswag: hellaswag: accuracy: 0.2500 | total: 8 | correct: 2
+DEBUG:nano_gpt.hellaswag_eval:hellaswag: hellaswag: accuracy: 0.2222 | total: 9 | correct: 2
 ```
 
 ## Prepare training dataset
 
-This will download the huggingface dataset into your `~/.cache` directory.
+This will download the huggingface dataset into your `~/.cache` directory
+which are 13 shard files about 2.15GB, totaling around 27GB of disk for the
+entire dataset.
+
+It will then tokenize the dataset to prepare to feed it into training and
+store in `./dataset_cache`. This will create shard files with 100 million tokens
+per shard. This is about 100 files for 10B total tokens. Each shard file is
+about 100MB, so the total token cache is about 10GB on disk. We
+don't load the entire dataset into RAM, but re-read each shard in each worker
+as we iterate through the training dataset.
 
 ```bash
-$ nano-gpt prepare_dataset --dataset=finewebedu --splits=train,validation
+$ DATASET=finewebedu
+$ nano-gpt prepare_dataset --dataset=${DATASET} --splits=train,validation
 ```
 
+The tokenization step takes about 15 seconds per shard on a lambda labs beefy
+machine, so about 25 minutes in total. The process currently appears to be I/O
+bound reading/writing the shard, so possible future improvement there.
+
+
 ## Train
+
+Checkpoints will be saved in `checkpoints/` by default, every 5k steps.
 
 This will train a new gpt2 125M parameter model using 0.5M step sizes
 (w/ gradient accumulation if needed) for 10B tokens.
@@ -145,11 +160,38 @@ This will train a new gpt2 125M parameter model using 0.5M step sizes
 nano-gpt train --dataset=finewebedu --device=cuda --sequence-length=1024 --micro-batch-size=16
 ```
 
-To run with DDP across multiple GPUs you can invoke with `torchrun` e.g.
+This is the recipe used for a real training run with increased micro batch size
+that can fit on our beefy machine across 8 GPUs:
 
 ```bash
-torchrun --standalone --nproc_per_node=8 `which nano-gpt` train ...
+$ torchrun --standalone --nproc_per_node=8 `which nano-gpt` train --dataset=${DATASET} --micro-batch-size=32 --hellaswag_samples=250
 ```
+
+Run appears to take 390ms per step.
+10B tokens / 500k tokens per step = 20k steps
+20k * 390ms = 2.16 hours
+
+## Training Progress
+
+You can view the results of the training run using the notebook
+`script/logs_analysis.ipynb` to examine the training log results.
+
+![Screenshot Training Log](artifacts/train-log.png)
+
+## Sampling from a checkpoint
+
+This is an example of sampling from the trained model chekpoint after 10B tokens.
+
+```bash
+$ nano-gpt sample --checkpoint=./checkpoint_019072.pt --device=mps        
+> Hello, I'm a language model, you're doing your application, I've put your main program and you want to model. Here are some things
+> Hello, I'm a language model, so let's have a look at a few very old and popular dialects with some basic information about some of
+> Hello, I'm a language model, but I also use a number of core vocabulary from the Python language and some data structures from
+the web to
+> Hello, I'm a language model, so this is about building a language to help my students to express themselves in all possible situations when they are in
+> Hello, I'm a language model, who wrote my first 'hello' and never used it, but my first 'hello' can't be in
+```
+
 
 ## Additional details
 
