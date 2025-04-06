@@ -58,9 +58,18 @@ section contains a high level overview of the key components and any additions.
 Install pre-requisites
 
 ```bash
+$ sudo snap install astral-uv --classic
 $ uv venv --python3.13
 $ source .venv/bin/activate
 $ uv pip install -r requirements_dev.txt
+```
+
+When using a lambda labs machine to preserve the python install:
+
+```bash
+$ python3 -m venv venv --system-site-packages
+$ source venv/bin/activate
+$ pip install -r requirements_dev.txt
 ```
 
 When using a jetson orin with the pytorch container `dustynv/pytorch:2.1-r36.2.0`
