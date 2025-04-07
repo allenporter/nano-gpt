@@ -117,8 +117,7 @@ The model was evaluated using hellaswag dataset. TBD results.
 
 The `nano-gpt train` command has built in support for evaluating against
 the val dataset as well as HellaSwag in between training steps. Every 500 steps
-the model was evaluated against the val dataset, as well as HellaSwag and
-geneated annecdotal samples from each worker.
+the model was evaluated against the val dataset and HellaSwag.
 
 ## Environmental Impact
 
