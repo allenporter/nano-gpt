@@ -203,7 +203,7 @@ def create_optimizer(
         learning_rate=get_lr(config, 0),
         use_fused=is_cuda,
     )
-    if checkpoint is not None:
+    if checkpoint is not None and checkpoint.optimizer_state_dict is not None:
         _LOGGER.info("Loading optimizer state from checkpoint")
         optimizer.load_state_dict(checkpoint.optimizer_state_dict)
     _LOGGER.debug("Optimizer: %s", optimizer.state_dict())
@@ -269,7 +269,9 @@ def train(
                     backward=False,
                 )
             if worker_state.ddp:
-                vall_loss_tensor = torch.tensor(val_loss_accum, device=worker_state.device)
+                vall_loss_tensor = torch.tensor(
+                    val_loss_accum, device=worker_state.device
+                )
                 dist.all_reduce(vall_loss_tensor, op=dist.ReduceOp.AVG)
             val_stats = ValStats(step=step, loss_accum=val_loss_accum)
             if worker_state.is_primary:
