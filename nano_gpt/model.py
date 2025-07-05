@@ -72,7 +72,7 @@ class CausalSelfAttention(nn.Module):
 
         # Output projection
         y = self.c_proj(y)
-        return y
+        return y  # type: ignore[no-any-return]
 
 
 class MLP(nn.Module):
