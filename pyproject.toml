@@ -13,7 +13,7 @@ authors = [{ name = "Allen Porter", email = "allen.porter@gmail.com" }]
 requires-python = ">=3.10"
 classifiers = []
 dependencies = [
-  "datasets>=3.3.2",
+  "datasets>=3.3.2,<4",
   "tiktoken>=0.9.0",
   "transformers>=4.49.0",
   "torch",
