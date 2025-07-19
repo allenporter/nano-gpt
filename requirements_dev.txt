@@ -1,10 +1,10 @@
 -e .
 black==25.1.0
 coverage==7.9.2
-mypy==1.16.1
+mypy==1.17.0
 pdoc==15.0.4
 pip==25.1.1
 pre-commit==4.2.0
 pytest-cov==6.2.1
 pytest==8.4.1
-ruff==0.12.2
+ruff==0.12.4
