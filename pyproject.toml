@@ -1,6 +1,27 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=77.0"]
+
+[project]
+name = "nano_gpt"
+version = "0.0.1"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+description = "A GPT-2 reproduction following karpathy's nanoGPT youtube videos"
+readme = "README.md"
+authors = [{ name = "Allen Porter", email = "allen.porter@gmail.com" }]
+requires-python = ">=3.12"
+classifiers = []
+dependencies = []
+
+[project.urls]
+Source = "https://github.com/allenporter/nano_gpt"
+
+[tool.setuptools.packages.find]
+include = ["nano_gpt*"]
+
 [tool.mypy]
 exclude = [
-  "setup.py",
   "venv/",
 ]
 platform = "linux"
