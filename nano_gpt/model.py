@@ -241,15 +241,14 @@ class GPT(nn.Module):
         sd_hf = model_hf.state_dict()
 
         # copy while ensuring all of the parameters are aligned and match in names and shapes
-        sd_keys_hf = sd_hf.keys()
         sd_keys_hf = [
-            k for k in sd_keys_hf if not k.endswith(".attn.masked_bias")
+            k for k in sd_hf.keys() if not k.endswith(".attn.masked_bias")
         ]  # ignore these, just a buffer
         sd_keys_hf = [k for k in sd_keys_hf if not k.endswith(".attn.bias")]
         # Transpose weights
-        assert len(sd_keys_hf) == len(
-            sd_keys
-        ), f"mismatched keys: {len(sd_keys_hf)} != {len(sd_keys)}"
+        assert len(sd_keys_hf) == len(sd_keys), (
+            f"mismatched keys: {len(sd_keys_hf)} != {len(sd_keys)}"
+        )
         for k in sd_keys_hf:
             if any(k.endswith(w) for w in PRETRAINED_TRANSPOSED_WEIGHTS):
                 # special treatment for the Conv1D weights we need to transpose
