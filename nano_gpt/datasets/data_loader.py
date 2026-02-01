@@ -309,7 +309,6 @@ def read_preprocessed_corpus(
     """
 
     class Iter(Iterable[tuple[torch.Tensor, torch.Tensor]]):
-
         def __iter__(self) -> Iterator[tuple[torch.Tensor, torch.Tensor]]:
             """Return the iterator."""
             _LOGGER.debug("Reading preprocessed corpus from %s", token_path)
