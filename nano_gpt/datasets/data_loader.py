@@ -164,7 +164,7 @@ class NumpyTokenizer:
         """Encode the text."""
         tokens = self._enc.encode(text)
         tokens_np = np.array(tokens)
-        if not (0 <= tokens_np).all() and (tokens_np < 2**16).all():
+        if not np.all(0 <= tokens_np) and np.all(tokens_np < 2**16):
             raise ValueError("token dictionary too large for uint16")
         return tokens_np.astype(np.uint16)
 

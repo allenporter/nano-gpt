@@ -23,12 +23,11 @@ repos:
           - pyi
   - repo: local
     hooks:
-      - id: mypy
-        name: mypy
-        entry: script/run-mypy.sh
+      - id: ty
+        name: ty check
+        entry: script/run-ty.sh
         language: script
-        types: [python]
-        require_serial: true
+        pass_filenames: false
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.2
     hooks:
