@@ -3,6 +3,7 @@
 This is a thin wrapper around the HuggingFace datasets library.
 """
 
+from typing import cast
 import datasets
 
 from nano_gpt.config import TrainDataset
@@ -19,8 +20,9 @@ def load_dataset(split: str, streaming: bool = True) -> datasets.Dataset:
 
     Streaming flag is ignored because the tinyshakespeare dataset is small.
     """
-    return datasets.load_dataset(
-        "tiny_shakespeare", trust_remote_code=True, split=split
+    return cast(
+        datasets.Dataset,
+        datasets.load_dataset("tiny_shakespeare", trust_remote_code=True, split=split),
     )
 
 

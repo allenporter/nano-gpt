@@ -140,7 +140,7 @@ def compute_loss(
         x, y = next(ds)
         x, y = x.to(worker_state.device), y.to(worker_state.device)
         if worker_state.ddp:
-            model.require_backward_grad_sync = step == (steps - 1)  # type: ignore[assignment]
+            setattr(model, "require_backward_grad_sync", step == (steps - 1))
         with torch.autocast(device_type=worker_state.device, dtype=worker_state.dtype):
             logits, loss = model(x, y)
         loss = loss / steps

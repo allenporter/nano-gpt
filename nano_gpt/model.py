@@ -42,7 +42,7 @@ class CausalSelfAttention(nn.Module):
         self.c_attn = nn.Linear(config.n_embd, 3 * config.n_embd)
         # Output projection
         self.c_proj = nn.Linear(config.n_embd, config.n_embd)
-        self.c_proj.SCALE_INIT = 1  # type: ignore[assignment]
+        setattr(self.c_proj, "SCALE_INIT", 1)
         # Regularization
         self.n_head = config.n_head
         self.n_embed = config.n_embd
@@ -72,7 +72,7 @@ class CausalSelfAttention(nn.Module):
 
         # Output projection
         y = self.c_proj(y)
-        return y  # type: ignore[no-any-return]
+        return y
 
 
 class MLP(nn.Module):
@@ -84,7 +84,7 @@ class MLP(nn.Module):
         self.c_fc = nn.Linear(config.n_embd, 4 * config.n_embd)
         self.gelu = nn.GELU(approximate="tanh")
         self.c_proj = nn.Linear(4 * config.n_embd, config.n_embd)
-        self.c_proj.SCALE_INIT = 1  # type: ignore[assignment]
+        setattr(self.c_proj, "SCALE_INIT", 1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Perform inference."""
@@ -134,7 +134,7 @@ class GPT(nn.Module):
 
         # Share weights for input and output embeddings. This is about 30% of
         # the model weights.
-        self.transformer.wte.weight = self.lm_head.weight  # type: ignore[union-attr]
+        cast(nn.Embedding, self.transformer.wte).weight = self.lm_head.weight
         self.apply(self._init_weights)
 
     def _init_weights(self, module: nn.Module) -> None:

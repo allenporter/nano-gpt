@@ -2,7 +2,6 @@
 
 set -o errexit
 
-# other common virtualenvs
 my_path=$(git rev-parse --show-toplevel)
 
 for venv in venv .venv .; do
@@ -12,4 +11,4 @@ for venv in venv .venv .; do
   fi
 done
 
-mypy ${my_path}
+ty check . --ignore unresolved-import --ignore possibly-missing-attribute --exclude "**/*.ipynb"
