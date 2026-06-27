@@ -8,7 +8,6 @@ See https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu
 
 import logging
 
-from typing import cast
 import datasets
 
 from nano_gpt.config import TrainDataset
@@ -36,14 +35,11 @@ def load_dataset(split: str, streaming: bool = True) -> datasets.Dataset:
         raise ValueError(
             f"Invalid split: {split}. Must be one of {list(_SPLITS.keys())}."
         )
-    return cast(
-        datasets.Dataset,
-        datasets.load_dataset(
-            "HuggingFaceFW/fineweb-edu",
-            name="sample-10BT",
-            streaming=streaming,
-            split=_SPLITS[split],
-        ),
+    return datasets.load_dataset(  # type: ignore[ty:invalid-return-type]
+        "HuggingFaceFW/fineweb-edu",
+        name="sample-10BT",
+        streaming=streaming,
+        split=_SPLITS[split],
     )
 
 

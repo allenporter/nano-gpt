@@ -58,3 +58,8 @@ warn_unreachable = true
 
 [tool.codespell]
 skip = "*.ipynb"
+
+[tool.ty.src]
+exclude = [
+  "**/*.ipynb",
+]
