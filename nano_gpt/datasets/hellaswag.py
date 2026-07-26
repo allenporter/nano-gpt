@@ -1,15 +1,16 @@
 """Data loader library for the hellaswag dataset."""
 
-from dataclasses import dataclass
-from collections.abc import Iterable
 import logging
+from collections.abc import Iterable
+from dataclasses import dataclass
 from typing import Any
 
 import datasets
 import torch
 
-from .data_loader import MapIterable
 from nano_gpt.tokenizer import Tokenizer
+
+from .data_loader import MapIterable
 
 _LOGGER = logging.getLogger(__name__)
 

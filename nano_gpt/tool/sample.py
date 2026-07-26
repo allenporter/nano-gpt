@@ -42,8 +42,8 @@ sample:
 """
 
 import argparse
-import logging
 import dataclasses
+import logging
 
 import torch
 
@@ -51,12 +51,11 @@ from nano_gpt.model import sample
 
 from .model_config import (
     create_model_arguments,
-    model_from_args,
     create_sample_arguments,
-    sample_config_from_args,
     load_checkpoint_context,
+    model_from_args,
+    sample_config_from_args,
 )
-
 
 _LOGGER = logging.getLogger(__name__)
 

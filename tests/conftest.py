@@ -1,8 +1,8 @@
 """Fixtures for nano_gpt tests."""
 
-from collections.abc import Sequence
 import os
 import tempfile
+from collections.abc import Sequence
 
 import pytest
 

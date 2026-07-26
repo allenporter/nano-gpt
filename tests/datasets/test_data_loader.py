@@ -1,27 +1,26 @@
 """Tests for the data loader."""
 
-from collections.abc import Generator
 import itertools
 import pathlib
 import tempfile
+from collections.abc import Generator
 
-import pytest
 import datasets
 import numpy as np
+import pytest
+import torch
 
+from nano_gpt.config import DatasetConfig
 from nano_gpt.datasets.data_loader import (
-    chunk_dataset,
-    tokenize_dataset,
-    cycle_dataset,
-    read_preprocessed_corpus,
-    preprocess_corpus,
     MapIterable,
     ShardedTokenizedFileWriter,
+    chunk_dataset,
+    cycle_dataset,
+    preprocess_corpus,
+    read_preprocessed_corpus,
+    tokenize_dataset,
 )
-from nano_gpt.config import DatasetConfig
 from nano_gpt.tokenizer import Tokenizer
-
-import torch
 
 
 def test_tokenize_dataset(fake_tokenizer: Tokenizer) -> None:

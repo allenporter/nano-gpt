@@ -1,16 +1,16 @@
 """Utilities for saving and loading checkpoints of the model and training."""
 
 import dataclasses
-from dataclasses import dataclass
 import json
 import logging
 import pathlib
+from dataclasses import dataclass
 from typing import Any
 
-import torch
 import safetensors.torch as st
+import torch
 
-from .config import GPTConfig, TrainConfig, DatasetConfig, EvalConfig, SampleConfig
+from .config import DatasetConfig, EvalConfig, GPTConfig, SampleConfig, TrainConfig
 from .model import PRETRAINED_TRANSPOSED_WEIGHTS
 
 __all__ = [

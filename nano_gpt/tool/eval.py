@@ -48,20 +48,20 @@ import logging
 
 import torch
 
-from nano_gpt.datasets import hellaswag
-from nano_gpt.datasets.data_loader import read_preprocessed_corpus
 from nano_gpt import hellaswag_eval, trainer
 from nano_gpt.config import DatasetConfig
+from nano_gpt.datasets import hellaswag
+from nano_gpt.datasets.data_loader import read_preprocessed_corpus
 from nano_gpt.log import create_log
 
 from .model_config import (
-    create_model_arguments,
-    model_from_args,
-    eval_config_from_args,
-    create_eval_arguments,
     create_dataset_arguments,
+    create_eval_arguments,
+    create_model_arguments,
     dataset_config_from_args,
+    eval_config_from_args,
     load_checkpoint_context,
+    model_from_args,
 )
 
 _LOGGER = logging.getLogger(__name__)

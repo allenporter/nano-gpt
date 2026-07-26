@@ -2,8 +2,8 @@
 
 from unittest.mock import patch
 
-from nano_gpt.trainer import TrainStats
 from nano_gpt.config import config_from
+from nano_gpt.trainer import TrainStats
 
 
 def test_train_stats() -> None:

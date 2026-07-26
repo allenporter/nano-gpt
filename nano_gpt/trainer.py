@@ -9,29 +9,29 @@ This supports DDP for multi-GPU training. The training process is also resumable
 using checkpoints.
 """
 
-from collections.abc import Iterator, Iterable
 import dataclasses
-from dataclasses import dataclass
 import logging
 import math
 import os
 import pathlib
 import time
+from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
 from typing import Any
 
 import torch
+import torch.distributed as dist
 from torch import nn
 from torch.distributed import init_process_group
 from torch.nn.parallel import DistributedDataParallel as DDP
-import torch.distributed as dist
 
 from . import hellaswag_eval
-from .model import sample, GPT
-from .config import TrainConfig, EvalConfig, SampleConfig, DatasetConfig
+from .checkpoint import Checkpoint, save_checkpoint
+from .config import DatasetConfig, EvalConfig, SampleConfig, TrainConfig
 from .datasets import hellaswag
-from .checkpoint import save_checkpoint, Checkpoint
 from .devices import get_dtype
 from .log import LogRecord, create_log
+from .model import GPT, sample
 
 __all__ = [
     "train",
@@ -80,7 +80,7 @@ class WorkerState:
         """Initialize the state."""
         # set up DDP (distributed data parallel).
         # torchrun command sets the env variables RANK, LOCAL_RANK, and WORLD_SIZE
-        self.ddp = int(os.environ.get("RANK", -1)) != -1  # is this a ddp run?
+        self.ddp = int(os.environ.get("RANK", "-1")) != -1  # is this a ddp run?
         if self.ddp and "cuda" not in device:
             self.ddp = False
             _LOGGER.warning(
@@ -140,9 +140,9 @@ def compute_loss(
         x, y = next(ds)
         x, y = x.to(worker_state.device), y.to(worker_state.device)
         if worker_state.ddp:
-            setattr(model, "require_backward_grad_sync", step == (steps - 1))
+            setattr(model, "require_backward_grad_sync", step == (steps - 1))  # noqa: B010
         with torch.autocast(device_type=worker_state.device, dtype=worker_state.dtype):
-            logits, loss = model(x, y)
+            _logits, loss = model(x, y)
         loss = loss / steps
         loss_accum += loss.detach().item()
         if backward:

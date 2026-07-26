@@ -1,8 +1,8 @@
 """Library for working with hardware devices."""
 
-import torch
 import logging
 
+import torch
 
 _LOGGER = logging.getLogger(__name__)
 

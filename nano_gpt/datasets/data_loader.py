@@ -1,10 +1,10 @@
 """Data loader library or wrapping HuggingFace datasets."""
 
 import itertools
-from collections.abc import Iterable, Generator, Callable, Iterator
 import logging
 import multiprocessing
 import pathlib
+from collections.abc import Callable, Generator, Iterable, Iterator
 from typing import TypeVar
 
 import datasets
@@ -12,8 +12,8 @@ import numpy as np
 import torch
 import tqdm
 
-from nano_gpt.tokenizer import Tokenizer
 from nano_gpt.config import DatasetConfig
+from nano_gpt.tokenizer import Tokenizer
 
 __all__ = [
     "preprocess_corpus",
@@ -127,7 +127,7 @@ def chunk_dataset(
     return ChainIterable(chunked)
 
 
-def cycle_dataset(ds: Iterable[_T]) -> Generator[_T]:
+def cycle_dataset(ds: Iterable[_T]) -> Generator[_T]:  # noqa: UP047
     """Cycle through the dataset.
 
     This is similar to itertools.cycle() but it can be restarted.
@@ -277,7 +277,7 @@ class ShardedTokenizedFileReader:
     def __init__(self, path: pathlib.Path) -> None:
         """Initialize the file reader."""
         self._path = path
-        self._files = sorted(list(path.parent.glob(f"{path.name}.*")))
+        self._files = sorted(path.parent.glob(f"{path.name}.*"))
         if len(self._files) == 0:
             raise ValueError(f"No files found matching path: {path}")
 
