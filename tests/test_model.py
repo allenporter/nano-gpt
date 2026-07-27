@@ -1,8 +1,8 @@
 """Tests for the GPT-2 model architecture."""
 
-from nano_gpt.model import GPT
-from nano_gpt.config import GPTConfig, DatasetConfig
+from nano_gpt.config import DatasetConfig, GPTConfig
 from nano_gpt.datasets.data_loader import preprocess_dataset
+from nano_gpt.model import GPT
 from nano_gpt.tokenizer import Tokenizer
 
 

@@ -27,7 +27,7 @@ import os
 import pathlib
 
 from nano_gpt.datasets import TRAIN_DATASETS
-from nano_gpt.datasets.data_loader import preprocess_corpus, SPLITS
+from nano_gpt.datasets.data_loader import SPLITS, preprocess_corpus
 from nano_gpt.tokenizer import get_document_tokenizer
 
 from .model_config import DATASET_DIR

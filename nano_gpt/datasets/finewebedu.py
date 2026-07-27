@@ -12,7 +12,6 @@ import datasets
 
 from nano_gpt.config import TrainDataset
 
-
 _LOGGER = logging.getLogger(__name__)
 
 __all__ = [

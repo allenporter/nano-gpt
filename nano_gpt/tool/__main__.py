@@ -6,8 +6,7 @@ import logging
 import sys
 from pathlib import Path
 
-from . import sample, train, eval, prepare_dataset, export
-
+from . import eval, export, prepare_dataset, sample, train
 
 _LOGGER = logging.getLogger(__name__)
 

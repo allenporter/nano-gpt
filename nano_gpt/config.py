@@ -1,11 +1,11 @@
 """Configuration module."""
 
 import dataclasses
-from dataclasses import dataclass
 import enum
 import logging
 import pathlib
-from typing import Protocol, Any
+from dataclasses import dataclass
+from typing import Any, Protocol
 
 import datasets
 

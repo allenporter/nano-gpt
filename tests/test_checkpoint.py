@@ -1,19 +1,19 @@
 """Tests for the checkpointing functionality."""
 
+import dataclasses
 import pathlib
 import tempfile
-import pytest
-import dataclasses
 
+import pytest
 import torch
 
-from nano_gpt.checkpoint import Checkpoint, save_checkpoint, load_checkpoint
+from nano_gpt.checkpoint import Checkpoint, load_checkpoint, save_checkpoint
 from nano_gpt.config import (
-    GPTConfig,
-    TrainConfig,
     DatasetConfig,
     EvalConfig,
+    GPTConfig,
     SampleConfig,
+    TrainConfig,
 )
 from nano_gpt.model import GPT
 from nano_gpt.tokenizer import Tokenizer

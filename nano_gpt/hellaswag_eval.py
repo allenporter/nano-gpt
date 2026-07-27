@@ -5,9 +5,9 @@ dataset contains multiple choice questions with a single correct answer. The mod
 must predict the correct answer from a list of 4 choices.
 """
 
+import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
-import logging
 from typing import cast
 
 import torch
@@ -16,8 +16,8 @@ from torch.nn import functional as F
 
 from .datasets import hellaswag
 from .devices import get_dtype
-from .tokenizer import Tokenizer
 from .log import LogRecord
+from .tokenizer import Tokenizer
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -105,7 +105,7 @@ def evaluate(
         mask = mask.to(device)
         with torch.no_grad():
             with torch.autocast(device_type=device, dtype=get_dtype(device)):
-                logits, loss = model(tokens)
+                logits, _loss = model(tokens)
             pred_norm = get_likely_row(tokens, mask, logits)
         result.add_result(pred_norm == example.label)
         _LOGGER.debug("hellaswag: %s", result.log_record())

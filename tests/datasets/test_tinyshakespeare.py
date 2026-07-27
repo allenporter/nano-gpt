@@ -1,6 +1,7 @@
 """Tests for the tinyshakespeare dataset."""
 
 from unittest.mock import patch
+
 from nano_gpt.datasets.tinyshakespeare import load_dataset
 
 
@@ -15,5 +16,5 @@ def test_load_dataset() -> None:
         mock_load.assert_called_once_with(
             "tiny_shakespeare", trust_remote_code=True, split="train"
         )
-        example = next(iter(map(lambda x: x["text"], ds)))
+        example = next(iter(x["text"] for x in ds))
         assert example[0:15] == "First Citizen:\n"

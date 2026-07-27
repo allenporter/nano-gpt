@@ -69,29 +69,28 @@ dataset:
 """
 
 import argparse
+import datetime
 import logging
 from collections.abc import Iterable
-import datetime
 
 import torch
 
-from nano_gpt.datasets.data_loader import read_preprocessed_corpus
-from nano_gpt.datasets import hellaswag
-from nano_gpt.trainer import train, WorkerState
 from nano_gpt.checkpoint import CHECKPOINT_DIR
-from nano_gpt.trainer import create_optimizer
+from nano_gpt.datasets import hellaswag
+from nano_gpt.datasets.data_loader import read_preprocessed_corpus
+from nano_gpt.trainer import WorkerState, create_optimizer, train
+
 from .model_config import (
-    create_model_arguments,
-    create_eval_arguments,
-    create_sample_arguments,
     create_dataset_arguments,
+    create_eval_arguments,
+    create_model_arguments,
+    create_sample_arguments,
     dataset_config_from_args,
     eval_config_from_args,
+    load_checkpoint_context,
     model_from_args,
     sample_config_from_args,
-    load_checkpoint_context,
 )
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -139,7 +138,9 @@ def create_arguments(args: argparse.ArgumentParser) -> None:
         "--log-file",
         type=str,
         default="train_{now}.log".format(
-            now=datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            now=datetime.datetime.now(datetime.timezone.utc).strftime(  # noqa: UP017
+                "%Y-%m-%d_%H-%M-%S"
+            )
         ),
         help="The path to the log file.",
     )
@@ -154,7 +155,7 @@ def run(args: argparse.Namespace) -> int:
     torch.set_float32_matmul_precision("high")
 
     with load_checkpoint_context(args) as checkpoint:
-        model, tokenizer, config = model_from_args(args, checkpoint)
+        model, _tokenizer, config = model_from_args(args, checkpoint)
         if config is None:
             raise ValueError("No trainable model configuration found")
         eval_config = eval_config_from_args(args, checkpoint)

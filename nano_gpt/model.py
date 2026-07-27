@@ -5,15 +5,15 @@ the approach from the GPT-2/GPT-3 papers.
 """
 
 import logging
-from typing import cast, Any
+from typing import Any, cast
 
 import torch
-import torch.nn as nn
+from torch import nn
 from torch.nn import functional as F
 from transformers import GPT2LMHeadModel
 
-from .tokenizer import Tokenizer
 from .config import GPTConfig
+from .tokenizer import Tokenizer
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -190,7 +190,7 @@ class GPT(nn.Module):
 
         Returns the output values and loss if targets are provided.
         """
-        B, T = x.size()
+        _B, T = x.size()
         if T > self.config.block_size:
             raise ValueError(
                 f"Cannot forward sequence of length {T}, block size is only {self.config.block_size}"
@@ -231,7 +231,7 @@ class GPT(nn.Module):
         model = GPT(model_config, tokenizer=tokenizer)
         sd = model.state_dict()
         sd_keys = [
-            k for k in sd.keys() if not k.endswith(".attn.bias")
+            k for k in sd if not k.endswith(".attn.bias")
         ]  # discard this mask / buffer, not a param
 
         # init a huggingface/transformers model
@@ -242,7 +242,7 @@ class GPT(nn.Module):
 
         # copy while ensuring all of the parameters are aligned and match in names and shapes
         sd_keys_hf = [
-            k for k in sd_hf.keys() if not k.endswith(".attn.masked_bias")
+            k for k in sd_hf if not k.endswith(".attn.masked_bias")
         ]  # ignore these, just a buffer
         sd_keys_hf = [k for k in sd_keys_hf if not k.endswith(".attn.bias")]
         # Transpose weights

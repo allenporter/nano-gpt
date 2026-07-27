@@ -8,33 +8,33 @@ This can be used to load a model from a checkpoint, a pretrained model, or
 initialize a model from pre-defined model configuration from the GPT-2 paper.
 """
 
-from argparse import ArgumentParser, BooleanOptionalAction
-from collections.abc import Generator
-from contextlib import contextmanager
 import dataclasses
 import json
 import logging
 import pathlib
+from argparse import ArgumentParser, BooleanOptionalAction
+from collections.abc import Generator
+from contextlib import contextmanager
 from typing import Any, cast
 
 import torch
 from huggingface_hub import HfFileSystem
 
-from nano_gpt.checkpoint import load_checkpoint, Checkpoint
+from nano_gpt.checkpoint import Checkpoint, load_checkpoint
 from nano_gpt.config import (
     MODELS,
-    config_from,
-    TrainedModelConfig,
+    DatasetConfig,
     EvalConfig,
     SampleConfig,
-    DatasetConfig,
-    model_config_from_pretrained,
+    TrainedModelConfig,
+    config_from,
     model_config_from_dict,
+    model_config_from_pretrained,
 )
 from nano_gpt.datasets import TRAIN_DATASETS
 from nano_gpt.devices import get_device
 from nano_gpt.model import GPT
-from nano_gpt.tokenizer import get_tokenizer, Tokenizer
+from nano_gpt.tokenizer import Tokenizer, get_tokenizer
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -105,14 +105,14 @@ def model_config_from_args(
         args.model,
         **{
             key: value
-            for key in {"micro_batch_size", "sequence_length", "total_batch_size"}
+            for key in ("micro_batch_size", "sequence_length", "total_batch_size")
             if (value := getattr(args, key, None)) is not None
         },
     )
 
 
 @contextmanager
-def load_checkpoint_context(args: Any) -> Generator[Checkpoint | None, None, None]:
+def load_checkpoint_context(args: Any) -> Generator[Checkpoint | None]:
     """Load a checkpoint from the flags.
 
     This is a context manager so that the checkpoint can be used across multiple calls to
@@ -130,7 +130,7 @@ def _trained_model_config_dict_from_args(args: Any) -> dict[str, Any]:
     """Create a TrainedModelConfig parameter dict from flags."""
     return {
         key: value
-        for key in {
+        for key in (
             "seed",
             "micro_batch_size",
             "sequence_length",
@@ -141,7 +141,7 @@ def _trained_model_config_dict_from_args(args: Any) -> dict[str, Any]:
             "checkpoint_steps",
             "checkpoint_dir",
             "log_file",
-        }
+        )
         if (value := getattr(args, key, None)) is not None
     }
 
@@ -156,7 +156,7 @@ def model_from_args(
     if args.pretrained is not None:
         if checkpoint is not None:
             raise ValueError("Cannot specify both --pretrained and --checkpoint")
-        _LOGGER.info("loading weights from pretrained gpt: %s" % args.pretrained)
+        _LOGGER.info("loading weights from pretrained gpt: %s", args.pretrained)
         pretrained_args: dict[str, Any] = {}
         if args.pretrained.startswith("./") or args.pretrained.startswith("/"):
             # If the pretrained model is a local path, we need to load it from the local
