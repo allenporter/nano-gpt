@@ -2,4 +2,5 @@ target-version = "py313"
 extend-exclude = ["*.ipynb"]
 
 [lint]
-ignore = ["E501", "RUF022", "UP047", "C414", "RUF059", "PLR0402", "B010", "SIM118", "PLC0208", "UP043", "UP031", "DTZ005", "PLW1508", "C417"]
+ignore = ["E501", "RUF022", "UP047", "B010"]
+extend-select = ["PLC0415"]
