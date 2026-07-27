@@ -157,3 +157,6 @@ train_*.log
 checkpoint_*.bin
 !artifacts/train_*.log
 export/
+
+# Merge conflict rejects
+*.rej
