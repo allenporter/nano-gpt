@@ -127,7 +127,7 @@ def chunk_dataset(
     return ChainIterable(chunked)
 
 
-def cycle_dataset(ds: Iterable[_T]) -> Generator[_T]:  # noqa: UP047
+def cycle_dataset(ds: Iterable[_T]) -> Generator[_T]:
     """Cycle through the dataset.
 
     This is similar to itertools.cycle() but it can be restarted.
