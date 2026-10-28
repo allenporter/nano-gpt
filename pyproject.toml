@@ -63,3 +63,6 @@ skip = "*.ipynb"
 exclude = [
   "**/*.ipynb",
 ]
+
+[tool.ty.rules]
+invalid-mutable-override = "ignore"
