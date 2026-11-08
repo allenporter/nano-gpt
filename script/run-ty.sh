@@ -11,4 +11,4 @@ for venv in venv .venv .; do
   fi
 done
 
-ty check . --ignore unresolved-import --ignore possibly-missing-attribute --exclude "**/*.ipynb"
+ty check . --ignore import-not-found --ignore possibly-missing-attribute --exclude "**/*.ipynb"
