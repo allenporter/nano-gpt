@@ -34,7 +34,7 @@ def load_dataset(split: str, streaming: bool = True) -> datasets.Dataset:
         raise ValueError(
             f"Invalid split: {split}. Must be one of {list(_SPLITS.keys())}."
         )
-    return datasets.load_dataset(  # type: ignore[ty:invalid-return-type]
+    return datasets.load_dataset(  # type: ignore[ty:invalid-explicit-return]
         "HuggingFaceFW/fineweb-edu",
         name="sample-10BT",
         streaming=streaming,

@@ -65,4 +65,4 @@ exclude = [
 ]
 
 [tool.ty.rules]
-invalid-mutable-override = "ignore"
+incompatible-mutable-override = "ignore"
